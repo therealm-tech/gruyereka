@@ -1,0 +1,70 @@
+name: quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pre-commit:
+    name: pre-commit
+    runs-on: ubuntu-24.04
+    steps:
+      - name: check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: set up the Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659  # v1.17.0
+
+      - name: set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+        with:
+          go-version: stable
+
+      - name: install pre-commit
+        run: python -m pip install pre-commit==4.6.2
+
+      - name: run the hooks
+        run: pre-commit run --all-files --show-diff-on-failure
+
+  test:
+    name: test
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:18.2-alpine
+        env:
+          POSTGRES_USER: gruyereka
+          POSTGRES_PASSWORD: gruyereka
+          POSTGRES_DB: gruyereka
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gruyereka"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - name: check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: set up the Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659  # v1.17.0
+
+      - name: run the test suite
+        env:
+          DATABASE_URL: postgres://gruyereka:gruyereka@localhost:5432/gruyereka
+        run: cargo test --all-targets --locked

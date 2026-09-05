@@ -1,0 +1,16 @@
+extends: default
+
+rules:
+  # yaml-conventions: no `---` opening a file.
+  document-start:
+    present: false
+  # yaml-conventions: block style only. `non-empty` still allows `{}` / `[]`.
+  braces:
+    forbid: non-empty
+  brackets:
+    forbid: non-empty
+  # A pinned image digest alone is longer than any sensible ceiling.
+  line-length: disable
+  # A workflow's trigger key is `on:`, which YAML reads as a boolean.
+  truthy:
+    check-keys: false

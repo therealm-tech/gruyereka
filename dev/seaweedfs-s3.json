@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "gruyereka",
+      "credentials": [
+        {
+          "accessKey": "gruyereka",
+          "secretKey": "gruyereka-dev-secret"
+        }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

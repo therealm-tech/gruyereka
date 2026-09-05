@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="gruyereka-logo-title">
+  <title id="gruyereka-logo-title">Gruyereka</title>
+  <path fill="#FDA826" d="M171.2 264.12A98.5 98.5 0 1 1 340.8 264.12L266.33 390.11A12 12 0 0 1 245.67 390.11Z"/>
+  <path fill="#FDEFCC" d="M182.4 257.5A85.5 85.5 0 1 1 329.6 257.5L258.58 377.67A3 3 0 0 1 253.42 377.67Z"/>
+  <path fill="#FEC43E" d="M186.27 255.21A81 81 0 1 1 325.73 255.21L256 373.19Z"/>
+  <g fill="#EE8723">
+    <circle cx="212" cy="197.1" r="19.8"/>
+    <circle cx="264.6" cy="227.1" r="18.1"/>
+    <circle cx="226.8" cy="265.5" r="13.8"/>
+    <circle cx="252.9" cy="301.1" r="9.9"/>
+  </g>
+</svg>

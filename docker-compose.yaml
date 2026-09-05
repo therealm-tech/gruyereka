@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:18.2-alpine
+    environment:
+      POSTGRES_USER: gruyereka
+      POSTGRES_PASSWORD: gruyereka
+      POSTGRES_DB: gruyereka
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U gruyereka
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # SeaweedFS speaks the S3 API on 8333. `-s3.autoCreateBucket` is on by
+  # default for an admin identity, so the photo bucket appears on the first
+  # upload and the stack needs no provisioning job.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.45
+    command:
+      - server
+      - -dir=/data
+      - -s3
+      - -s3.port=8333
+      # Binds to the container IP otherwise, which no probe inside it can reach.
+      - -ip.bind=0.0.0.0
+      - -s3.config=/etc/seaweedfs/s3.json
+      - -master.volumeSizeLimitMB=1024
+    ports:
+      - "8333:8333"
+    volumes:
+      - seaweedfs-data:/data
+      - ./dev/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - http://localhost:8333/healthz
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
+  seaweedfs-data:
