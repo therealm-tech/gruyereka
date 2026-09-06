@@ -69,9 +69,10 @@ and the only client that does not hold a token of its own:
 - **`app/`** — the routes. Public pages are server components that read the API
   and return finished HTML with their metadata, canonical link and `schema.org`
   payload; writes are server actions. Cheeses and shops are indexable; the
-  carnet, the forms and the correction pages are `noindex` and redirect a signed
-  out visitor to the sign-in. `app/photos/[cheeseId]/` relays the API's photo
-  redirect so the browser keeps talking to one origin.
+  carnet, the profile, the administration, the forms and the correction pages
+  are `noindex` and redirect a signed out visitor to the sign-in.
+  `app/photos/[cheeseId]/` relays the API's photo redirect so the browser keeps
+  talking to one origin.
 - **`lib/api/`** — the wire boundary. One `zod` schema per response, parsed on
   arrival, so a drifting contract fails here rather than three components later;
   `client.ts` is the only module that calls the API, and the only one that turns
@@ -284,6 +285,10 @@ step and puts the duplication somewhere a test can see it.
   for the reader's own review in the page it already fetched. Further down the
   list, the form opens blank — submitting it still overwrites, since the API
   keys a review on its author.
+- **A moderator has the reach but no button.** The API scopes a write to its
+  author unless the caller moderates, so a moderator may rewrite anybody's
+  tasting or review — the web client offers the controls only on the reader's
+  own rows. Exercising the wider scope means calling the API directly.
 - **A tasting shows no author name.** `GET /users` is administrator-only and
   there is no public endpoint for a single account, so a client that is not an
   administrator cannot resolve the `userId` on a tasting or a review into a

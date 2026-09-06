@@ -172,3 +172,47 @@ export function WarningIcon({ className, size = 18 }: IconProps) {
     </svg>
   );
 }
+
+/** Sliders rather than a cog: the administration moves settings, it is not one. */
+export function SlidersIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg
+      {...base(size)}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      aria-hidden="true"
+      className={className}
+    >
+      {/* The rails break around each knob rather than being masked by a filled
+          circle: this icon sits on the dark rail, on paper and on orange. */}
+      <path d="M4 7.5h2.6M12.4 7.5H20M4 16.5h8.1M17.9 16.5H20" />
+      <circle cx="9.5" cy="7.5" r="2.4" />
+      <circle cx="15" cy="16.5" r="2.4" />
+    </svg>
+  );
+}
+
+/**
+ * The gap is what makes the rotation visible, so it stays a partial ring rather
+ * than a full circle. Purely decorative: whatever is waiting says so itself,
+ * through `aria-busy` and a disabled control.
+ */
+export function SpinnerIcon({ className, size = 13 }: IconProps) {
+  return (
+    <svg
+      {...base(size)}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      aria-hidden="true"
+      className={`animate-spin motion-reduce:animate-none ${className ?? ""}`}
+    >
+      <path d="M12 3a9 9 0 1 1-6.4 2.6" />
+    </svg>
+  );
+}

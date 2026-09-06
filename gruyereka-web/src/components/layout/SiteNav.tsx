@@ -4,7 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { BookIcon, PinIcon, WedgeIcon } from "@/components/ui/Icon";
+import { BookIcon, PinIcon, SlidersIcon, WedgeIcon } from "@/components/ui/Icon";
 
 type NavItem = {
   href: Route;
@@ -14,7 +14,8 @@ type NavItem = {
 
 /**
  * Only the sections that exist. A nav entry pointing at a 404 is worse than a
- * short nav.
+ * short nav, and the administration only exists for an administrator — the page
+ * refuses everybody else anyway, so offering it would be offering a refusal.
  */
 const ITEMS: readonly NavItem[] = [
   { href: "/fromages", label: "Fromages", icon: WedgeIcon },
@@ -22,15 +23,25 @@ const ITEMS: readonly NavItem[] = [
   { href: "/carnet", label: "Carnet", icon: BookIcon },
 ];
 
+const ADMIN: NavItem = {
+  href: "/administration",
+  label: "Administration",
+  icon: SlidersIcon,
+};
+
+function itemsFor(admin: boolean): readonly NavItem[] {
+  return admin ? [...ITEMS, ADMIN] : ITEMS;
+}
+
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function RailNav() {
+export function RailNav({ admin = false }: { admin?: boolean }) {
   const pathname = usePathname();
   return (
     <nav aria-label="Sections" className="flex flex-col gap-0.5">
-      {ITEMS.map(({ href, label, icon: Icon }) => {
+      {itemsFor(admin).map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
           <Link
@@ -50,14 +61,14 @@ export function RailNav() {
   );
 }
 
-export function BottomNav() {
+export function BottomNav({ admin = false }: { admin?: boolean }) {
   const pathname = usePathname();
   return (
     <nav
       aria-label="Sections"
       className="fixed inset-x-0 bottom-0 z-10 flex border-t border-rule bg-paper pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
     >
-      {ITEMS.map(({ href, label, icon: Icon }) => {
+      {itemsFor(admin).map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
           <Link

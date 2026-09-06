@@ -65,7 +65,7 @@ export function AppShell({ user, children }: { user: User | null; children: Reac
         <Link href="/fromages" className="px-2 pb-6 text-rail-ink">
           <Wordmark size={24} />
         </Link>
-        <RailNav />
+        <RailNav admin={user?.role === "ADMIN"} />
         {user === null ? null : (
           <div className="pt-4">
             <ButtonLink href="/degustations/nouvelle" variant="accent" className="w-full">
@@ -91,7 +91,7 @@ export function AppShell({ user, children }: { user: User | null; children: Reac
         <main className="grow px-5 pt-6 pb-28 md:px-10 md:pt-8 md:pb-12">{children}</main>
       </div>
 
-      <BottomNav />
+      <BottomNav admin={user?.role === "ADMIN"} />
     </div>
   );
 }
