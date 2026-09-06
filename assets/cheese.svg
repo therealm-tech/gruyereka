@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="gruyereka-cheese-title">
+  <title id="gruyereka-cheese-title">Fromage</title>
+  <path fill="#FDC028" d="M256 134.7C258 149 262 154.5 270.4 156.7 262 159 258 164.5 256 178.7 254 164.5 250 159 241.7 156.7 250 154.5 254 149 256 134.7Z"/>
+  <g fill="#FDC028">
+    <rect x="226.5" y="136.5" width="15" height="15" rx="5"/>
+    <rect x="270.5" y="136.5" width="15" height="15" rx="5"/>
+    <rect x="226.5" y="164.5" width="15" height="15" rx="5"/>
+    <rect x="266.5" y="164.5" width="15" height="15" rx="5"/>
+  </g>
+  <path fill="#FFD04E" d="M288 173C327 173 368 204 389.5 260L389.5 342C389.5 362 377 376 357 376L158 376C138 376 125 363 125 345L125 260C125 241 145 235 145 235Z"/>
+  <path fill="#FEB322" d="M125 358 389.5 347C389.5 362 377 376 357 376L158 376C138 376 125 363 125 358Z"/>
+  <path fill="none" stroke="#FEB322" stroke-width="8.7" stroke-linecap="round" d="M210 237 367 237"/>
+  <g fill="#FEA420" stroke="#EE7714" stroke-width="7">
+    <ellipse cx="263.7" cy="213.2" rx="32.9" ry="13.7"/>
+    <circle cx="306" cy="288" r="29.3"/>
+    <circle cx="204" cy="330" r="29.3"/>
+    <circle cx="232" cy="270" r="8"/>
+  </g>
+  <circle fill="#FEB322" cx="352.3" cy="315.9" r="5"/>
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+    <path stroke-width="9" d="M330 210C334 203 339 199 346 198.5"/>
+    <path stroke-width="6.7" d="M153 234.7 179 234.7"/>
+  </g>
+  <path fill="none" stroke="#EE7714" stroke-width="7" stroke-linejoin="round" d="M288 173C327 173 368 204 389.5 260L389.5 342C389.5 362 377 376 357 376L158 376C138 376 125 363 125 345L125 260C125 241 145 235 145 235Z"/>
+</svg>

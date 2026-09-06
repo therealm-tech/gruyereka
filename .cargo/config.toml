@@ -1,0 +1,36 @@
+# Development defaults, so `cargo run` and `cargo test` work against the Compose
+# stack straight after a clone. Cargo only applies these to processes it spawns
+# itself: running `./target/debug/gruyereka-api` by hand still needs a real
+# environment.
+#
+# There is no `force = true` anywhere on purpose. Without it a variable already
+# present in the environment wins, so CI, a container and anyone exporting their
+# own value keep theirs and this file stays a fallback rather than an override.
+#
+# Nothing here is a secret. Every value unlocks the throwaway stack in
+# docker-compose.yaml and dev/seaweedfs-s3.json and nothing else; a real
+# deployment sets all of them from its own configuration.
+
+[env]
+# Not the shipped default of 0.0.0.0:8080: 8080 is contested (OrbStack, Tomcat,
+# Jenkins and half of everything else bind it), and a process holding
+# 127.0.0.1:8080 wins every request to `localhost` while this one binds
+# 0.0.0.0:8080 without complaining — the symptom is a 404 from somebody else's
+# service, not a port clash. Loopback only, because a development API has no
+# business on the network.
+BIND_ADDR = "127.0.0.1:8787"
+
+DATABASE_URL = "postgres://gruyereka:gruyereka@localhost:5432/gruyereka"
+
+JWT_SECRET = "dev-secret-not-a-real-one"
+
+SUPER_ADMIN_EMAIL = "admin@gruyereka.local"
+SUPER_ADMIN_PASSWORD = "admin"
+
+S3_BUCKET = "gruyereka-photos"
+S3_ENDPOINT_URL = "http://localhost:8333"
+AWS_ACCESS_KEY_ID = "gruyereka"
+AWS_SECRET_ACCESS_KEY = "gruyereka-dev-secret"
+
+# Louder than the `info` default for our own crate, quiet for its dependencies.
+LOG_FILTER = "gruyereka_api=debug,info"

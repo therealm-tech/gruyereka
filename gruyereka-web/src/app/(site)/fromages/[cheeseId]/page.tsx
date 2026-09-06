@@ -1,0 +1,244 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { CheesePhoto } from "@/components/cheeses/CheesePhoto";
+import { TastingRow } from "@/components/tastings/TastingRow";
+import { DesignationBadge, SoftBadge } from "@/components/ui/Badge";
+import { ChevronRightIcon } from "@/components/ui/Icon";
+import { Notice } from "@/components/ui/Notice";
+import { RatingHoles } from "@/components/ui/RatingHoles";
+import { getCheese } from "@/lib/api/cheeses";
+import { ApiError } from "@/lib/api/errors";
+import type { Cheese, PricePerKg, Shop, Tasting } from "@/lib/api/schemas";
+import { getShop } from "@/lib/api/shops";
+import { listTastings } from "@/lib/api/tastings";
+import { filledHoles, formatAverage, formatPriceRange } from "@/lib/format";
+import { currentUser } from "@/lib/session";
+import { cheeseMetaLine, milkLabels, pasteLabels } from "@/lib/vocabulary";
+
+const TASTINGS_SHOWN = 20;
+
+async function loadCheese(cheeseId: string): Promise<Cheese> {
+  try {
+    return await getCheese(cheeseId);
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "NOT_FOUND") notFound();
+    throw error;
+  }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ cheeseId: string }>;
+}): Promise<Metadata> {
+  const { cheeseId } = await params;
+  let cheese: Cheese;
+  try {
+    cheese = await getCheese(cheeseId);
+  } catch {
+    return { title: "Fromage introuvable" };
+  }
+
+  const meta = cheeseMetaLine(cheese.milkTypes, cheese.pasteType, cheese.agingMonths);
+  const average = formatAverage(cheese.averageScore);
+  const description =
+    average === null
+      ? `${cheese.name} — ${meta}. Pas encore de dégustation notée.`
+      : `${cheese.name} — ${meta}. Noté ${average} sur 5 sur ${cheese.tastingCount} dégustations, avec les prix au kilo relevés en boutique.`;
+
+  return {
+    title: cheese.name,
+    description,
+    alternates: { canonical: `/fromages/${cheese.id}` },
+    openGraph: { title: cheese.name, description, type: "article" },
+  };
+}
+
+/** The prices of the currency most recently used, so a range never mixes them. */
+function priceRange(tastings: readonly Tasting[]): { low: PricePerKg; high: PricePerKg } | null {
+  const priced = tastings.filter(
+    (tasting): tasting is Tasting & { pricePerKg: PricePerKg } => tasting.pricePerKg !== null,
+  );
+  const newest = priced[0];
+  if (newest === undefined) return null;
+  const sameCurrency = priced
+    .filter((tasting) => tasting.pricePerKg.currency === newest.pricePerKg.currency)
+    .map((tasting) => tasting.pricePerKg);
+  const amounts = sameCurrency.map((price) => price.amountCents);
+  const low = Math.min(...amounts);
+  const high = Math.max(...amounts);
+  return {
+    low: { amountCents: low, currency: newest.pricePerKg.currency },
+    high: { amountCents: high, currency: newest.pricePerKg.currency },
+  };
+}
+
+/** schema.org, so a shared fiche unfurls with its rating instead of a bare link. */
+function structuredData(cheese: Cheese, shops: number): string {
+  const payload: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: cheese.name,
+    category: "Fromage",
+    additionalProperty: [
+      {
+        "@type": "PropertyValue",
+        name: "Lait",
+        value: cheese.milkTypes.map((milk) => milkLabels[milk]).join(", "),
+      },
+      { "@type": "PropertyValue", name: "Pâte", value: pasteLabels[cheese.pasteType] },
+      ...(cheese.agingMonths === null
+        ? []
+        : [{ "@type": "PropertyValue", name: "Affinage", value: `${cheese.agingMonths} mois` }]),
+      ...(cheese.designation === null
+        ? []
+        : [{ "@type": "PropertyValue", name: "Signe de qualité", value: cheese.designation }]),
+    ],
+  };
+  if (cheese.averageScore !== null && cheese.tastingCount > 0) {
+    payload.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: cheese.averageScore,
+      reviewCount: cheese.tastingCount,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
+  if (shops > 0) payload.offers = { "@type": "AggregateOffer", offerCount: shops };
+  // A name carrying `</script>` would otherwise close the block early.
+  return JSON.stringify(payload).replaceAll("<", "\\u003c");
+}
+
+export default async function CheesePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ cheeseId: string }>;
+  searchParams: Promise<{ photo?: string }>;
+}) {
+  const { cheeseId } = await params;
+  const { photo } = await searchParams;
+  const [cheese, tastings, viewer] = await Promise.all([
+    loadCheese(cheeseId),
+    listTastings({ cheeseId, perPage: TASTINGS_SHOWN }),
+    currentUser(),
+  ]);
+
+  const shopIds = [...new Set(tastings.items.map((tasting) => tasting.shopId))];
+  const shops = new Map<string, Shop>();
+  await Promise.all(
+    shopIds.map(async (shopId) => {
+      try {
+        shops.set(shopId, await getShop(shopId));
+      } catch {
+        // A shop deleted since the tasting was written leaves the row readable.
+      }
+    }),
+  );
+
+  const average = formatAverage(cheese.averageScore);
+  const range = priceRange(tastings.items);
+  const remaining = tastings.total - tastings.items.length;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD is a script body; escaped above.
+        dangerouslySetInnerHTML={{ __html: structuredData(cheese, shops.size) }}
+      />
+
+      {photo === "echec" ? (
+        <Notice tone="caution" title="La photo n’a pas été envoyée">
+          Le fromage est bien créé, mais son image n’a pas pu être déposée. Réessayez plus tard.
+        </Notice>
+      ) : null}
+
+      <nav aria-label="Fil d’Ariane" className="flex items-center gap-2 text-[13px]">
+        <Link href="/fromages">Fromages</Link>
+        <ChevronRightIcon className="text-mute-2" size={13} />
+        <span className="font-mono text-mute">{cheese.name}</span>
+      </nav>
+
+      <div className="flex flex-col gap-8 lg:flex-row lg:gap-10">
+        <div className="flex w-full shrink-0 flex-col gap-4.5 lg:w-[400px]">
+          <div className="overflow-hidden rounded-card border border-rule">
+            <CheesePhoto cheese={cheese} height={260} markSize={96} />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2">
+              {cheese.designation === null ? null : (
+                <DesignationBadge>{cheese.designation}</DesignationBadge>
+              )}
+              {cheese.agingMonths === null ? null : (
+                <SoftBadge>{cheese.agingMonths} mois d’affinage</SoftBadge>
+              )}
+            </div>
+            <h1 className="font-serif text-5xl leading-none">{cheese.name}</h1>
+            <p className="text-[15px] text-ink-2">
+              {cheese.milkTypes
+                .map((milk) => `Lait de ${milkLabels[milk].toLowerCase()}`)
+                .join(", ")}
+              {" · Pâte "}
+              {pasteLabels[cheese.pasteType].toLowerCase()}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-b border-rule py-4">
+            <div className="flex items-center gap-3">
+              <RatingHoles
+                filled={filledHoles(cheese.averageScore)}
+                size={14}
+                label={average === null ? "Pas encore noté" : `Noté ${average} sur 5`}
+              />
+              <span className="font-mono text-xs text-ink-2">
+                {average === null
+                  ? "Pas encore de dégustation"
+                  : `${average} · ${cheese.tastingCount} dégustation${cheese.tastingCount > 1 ? "s" : ""}`}
+              </span>
+            </div>
+            {range === null ? null : (
+              <div className="flex items-baseline gap-2.5">
+                <span className="font-mono text-[17px]">
+                  {formatPriceRange(range.low, range.high)}
+                </span>
+                <span className="font-mono text-xs text-mute">
+                  par kilo · {shops.size} boutique{shops.size > 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <section className="flex min-w-0 grow flex-col">
+          <h2 className="pb-3 font-serif text-3xl">Les dégustations</h2>
+          {tastings.items.length === 0 ? (
+            <p className="border-t border-rule py-6 text-sm text-ink-2 text-pretty">
+              Personne ne l’a encore goûté. La première dégustation ouvrira aussi son historique de
+              prix.
+            </p>
+          ) : (
+            <>
+              {tastings.items.map((tasting) => (
+                <TastingRow
+                  key={tasting.id}
+                  tasting={tasting}
+                  shop={shops.get(tasting.shopId) ?? null}
+                  mine={viewer !== null && viewer.id === tasting.userId}
+                />
+              ))}
+              {remaining > 0 ? (
+                <p className="border-t border-rule py-4 font-mono text-xs text-mute">
+                  {remaining} dégustation{remaining > 1 ? "s" : ""} de plus, non affichée
+                  {remaining > 1 ? "s" : ""}.
+                </p>
+              ) : null}
+            </>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

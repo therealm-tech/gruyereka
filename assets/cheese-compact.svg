@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="gruyereka-cheese-compact-title">
+  <title id="gruyereka-cheese-compact-title">Fromage</title>
+  <path fill="#FFD04E" d="M288 173C327 173 368 204 389.5 260L389.5 342C389.5 362 377 376 357 376L158 376C138 376 125 363 125 345L125 260C125 241 145 235 145 235Z"/>
+  <g fill="#FEA420">
+    <ellipse cx="263.7" cy="213.2" rx="30" ry="13"/>
+    <circle cx="306" cy="288" r="27"/>
+    <circle cx="204" cy="330" r="27"/>
+  </g>
+  <path fill="none" stroke="#EE7714" stroke-width="13" stroke-linejoin="round" d="M288 173C327 173 368 204 389.5 260L389.5 342C389.5 362 377 376 357 376L158 376C138 376 125 363 125 345L125 260C125 241 145 235 145 235Z"/>
+</svg>

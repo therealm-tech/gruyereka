@@ -2,35 +2,43 @@
 
 ## Overview
 
-Gruyereka is a single Rust HTTP service, `gruyereka-api`, sitting between its
-clients and two stores: PostgreSQL for everything relational, and an
-S3-compatible bucket for the cheese photos. The service is stateless — every
-piece of state lives in one of the two stores — so it scales horizontally and
-restarts freely.
+Gruyereka is two services. `gruyereka-api` is a Rust HTTP service holding every
+piece of domain state in PostgreSQL and the cheese photos in an S3-compatible
+bucket. `gruyereka-web` is a Next.js server rendering the browser-facing client
+against that API. Both are stateless — all state lives in one of the two stores
+— so either scales horizontally and restarts freely.
 
 ```mermaid
 graph LR
-    client[client]
+    browser[browser]
+    client[other API clients]
+    web[gruyereka-web]
     api[gruyereka-api]
     pg[(PostgreSQL)]
     s3[(S3-compatible bucket)]
     osm[Nominatim / OpenStreetMap]
 
-    client -->|HTTPS, JSON| api
+    browser -->|HTTPS, HTML and server actions| web
+    web -->|HTTPS, JSON, bearer| api
+    client -->|HTTPS, JSON, bearer| api
     client -->|HTTPS, shop lookup| osm
     api -->|SQL over TCP| pg
     api -->|S3 API, upload and pre-sign| s3
-    client -->|HTTPS, pre-signed URL| s3
+    browser -->|HTTPS, pre-signed URL| s3
 ```
 
-The arrow the diagram is really about is the missing one: `gruyereka-api` never
-talks to OpenStreetMap. The client resolves a shop before creating it and hands
-over the reference — see
+Two arrows the diagram is really about are the missing ones. `gruyereka-api`
+never talks to OpenStreetMap: a client resolves a shop before creating it and
+hands over the reference — see
 [ADR 0002](docs/adr/0002-resolve-shop-identity-against-openstreetmap-in-the-client.md).
+And the browser never talks to `gruyereka-api`: it reaches the API only through
+`gruyereka-web`, which holds the access token — see
+[ADR 0004](docs/adr/0004-render-the-web-client-on-its-own-server.md). The bucket
+is the one exception, and only over a pre-signed URL that expires.
 
 ## Components
 
-`gruyereka-api` is one binary, layered inside `gruyereka-api/src/`:
+`gruyereka-api` is one binary, layered inside [gruyereka-api/src/](gruyereka-api/src/):
 
 - **`api/`** — the HTTP boundary. Owns the wire contract: one dedicated DTO per
   request and per response, `camelCase` JSON, `validator` checks at the edge,
@@ -54,6 +62,24 @@ over the reference — see
 - **`photo.rs`** — the object store. Uploads and pre-signs; knows nothing about
   cheeses beyond the key it is handed.
 
+`gruyereka-web` is a Next.js application in [gruyereka-web/src/](gruyereka-web/src/),
+and the only client that does not hold a token of its own:
+
+- **`app/`** — the routes. Public pages are server components that read the API
+  and return finished HTML with their metadata, canonical link and `schema.org`
+  payload; writes are server actions. `app/photos/[cheeseId]/` relays the API's
+  photo redirect so the browser keeps talking to one origin.
+- **`lib/api/`** — the wire boundary. One `zod` schema per response, parsed on
+  arrival, so a drifting contract fails here rather than three components later;
+  `client.ts` is the only module that calls the API, and the only one that turns
+  a refusal into an `ApiError` carrying its stable code.
+- **`lib/session.ts`** — the access token, in an httpOnly cookie this server
+  sets and reads. Nothing in `components/` can see it.
+- **`lib/vocabulary.ts`** — the French wording for every closed vocabulary. The
+  API sends codes and this file is the single place one becomes a word.
+- **`components/`** — presentation only. No component fetches, and none reads
+  configuration.
+
 ## Data flow
 
 **Recording a tasting.** The client authenticates, gets a cheese and a shop (or
@@ -73,6 +99,21 @@ scale is defined once, in the schema.
 answers `307` to a pre-signed URL that expires in fifteen minutes, and the
 client follows it straight to the bucket. Photo bytes never pass back through
 the API, and a leaked URL stops working.
+
+**Opening a public fiche.** The browser asks `gruyereka-web` for
+`/fromages/{id}`. That server fetches the cheese and its tastings from the API
+with no credentials, resolves the shop of each tasting, and returns finished
+HTML carrying the title, the description, the canonical link and a `schema.org`
+`Product` block. A link unfurler or a crawler reading that response sees the
+rating without executing anything. Search and paging are query parameters on
+that URL, so a result page is addressable and works with JavaScript off.
+
+**Signing in.** The browser posts the form to a server action on
+`gruyereka-web`, which calls `POST /auth/login` and puts the returned token in
+an httpOnly, `SameSite=Lax` cookie. Page JavaScript never sees the token; every
+later authenticated call is made by the server, which reads the cookie and
+attaches the bearer. Signing out deletes the cookie — the token itself stays
+valid until it expires, since the API cannot revoke one.
 
 ## State and persistence
 
@@ -124,7 +165,10 @@ is nothing to hide.
 
 **No language on the wire.** Closed vocabularies are stable `SCREAMING_SNAKE`
 codes and clients translate them; error responses carry a `code` plus the
-offending field names, never a display string. The alternative — negotiating
+offending field names, never a display string. Each client owns its
+bundle: for the web one it is [gruyereka-web/src/lib/vocabulary.ts](gruyereka-web/src/lib/vocabulary.ts),
+the single place a code becomes a word, tested to cover every code the API can
+send. The alternative — negotiating
 `Accept-Language` and returning French labels — would put the vocabulary in the
 server and force a deployment for every wording change. User-written content is
 never translated, in either direction: a cheese name is a proper noun, and an
@@ -150,6 +194,20 @@ literal and push all variation into bind parameters, including the optional
 filters, which are written as `$1::text IS NULL OR …`. Composing SQL with
 `format!` would work and is one `AssertSqlSafe` away — the point is that nobody
 can add an interpolated filter later without deliberately removing the guard.
+
+**The browser talks to `gruyereka-web`, never to `gruyereka-api`.** See
+[ADR 0004](docs/adr/0004-render-the-web-client-on-its-own-server.md). It buys
+link previews and indexable fiches, a token no page script can read, and a web
+client that needs no CORS grant — `CORS_ALLOWED_ORIGINS` exists for the clients
+that do call the API directly. It costs a second process to run and a second
+declaration of the wire contract.
+
+**The web client parses every response it receives.** `zod` schemas mirror the
+API's DTOs and are applied on arrival, so a field that changes type shows up as
+a loud failure at the boundary rather than as `undefined` rendered three
+components deep. The schemas are hand-written against the OpenAPI document
+rather than generated from it, which keeps the build free of a code-generation
+step and puts the duplication somewhere a test can see it.
 
 ## Invariants and constraints
 
@@ -197,3 +255,11 @@ can add an interpolated filter later without deliberately removing the guard.
   global rather than per shop or per tasting.
 - **Listings are offset-paginated**, which is fine at this size and degrades on
   deep pages; there is no cursor pagination.
+- **The wire contract is declared twice**, once as the API's DTOs and once as
+  the web client's schemas. Nothing checks the two against each other: a change
+  to one is caught at runtime by the client's parser, not at build time.
+- **A tasting shows no author name.** `GET /users` is administrator-only and
+  there is no public endpoint for a single account, so a client that is not an
+  administrator cannot resolve the `userId` on a tasting or a review into a
+  display name. The web client marks its own entries and leaves the others
+  unattributed.

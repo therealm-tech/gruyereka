@@ -9,3 +9,4 @@ in the same change; everything else is standing rationale in that file instead.
 | [0001](0001-keep-accounts-and-passwords-in-the-api.md) | Keep accounts and passwords in the API | accepted |
 | [0002](0002-resolve-shop-identity-against-openstreetmap-in-the-client.md) | Resolve shop identity against OpenStreetMap in the client | accepted |
 | [0003](0003-store-cheese-photos-in-s3-compatible-object-storage.md) | Store cheese photos in S3-compatible object storage | accepted |
+| [0004](0004-render-the-web-client-on-its-own-server.md) | Render the web client on its own server | accepted |

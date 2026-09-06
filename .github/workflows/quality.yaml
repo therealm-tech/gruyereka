@@ -34,6 +34,18 @@ jobs:
         with:
           go-version: stable
 
+      - name: set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: gruyereka-web/package-lock.json
+
+      # The biome and tsc hooks run the binaries from the web client's own
+      # dependency tree, so they have to be installed before pre-commit runs.
+      - name: install the web client's dependencies
+        run: npm --prefix gruyereka-web ci
+
       - name: install pre-commit
         run: python -m pip install pre-commit==4.6.2
 
@@ -68,3 +80,31 @@ jobs:
         env:
           DATABASE_URL: postgres://gruyereka:gruyereka@localhost:5432/gruyereka
         run: cargo test --all-targets --locked
+
+  web-test:
+    name: web test
+    runs-on: ubuntu-24.04
+    steps:
+      - name: check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: gruyereka-web/package-lock.json
+
+      - name: install the dependencies
+        run: npm --prefix gruyereka-web ci
+
+      - name: run the test suite
+        run: npm --prefix gruyereka-web test
+
+      # The build is the last type check the hooks cannot do: it resolves the
+      # route types Next generates from the app directory.
+      - name: build the client
+        env:
+          API_BASE_URL: http://localhost:8080
+          PUBLIC_BASE_URL: http://localhost:3000
+        run: npm --prefix gruyereka-web run build

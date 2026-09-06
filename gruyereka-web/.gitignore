@@ -1,0 +1,11 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+coverage/
+
+# Personal overrides of .env.development; the committed defaults stay committed.
+.env*.local
+
+# Synced from the repository's assets/ by scripts/sync-brand.mjs.
+public/brand/

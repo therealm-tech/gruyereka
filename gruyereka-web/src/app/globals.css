@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/*
+ * The design tokens: an étal de fromager — cream paper, thin rules, a serif with
+ * some grain. Two accents at equal chroma and lightness, orange for cheeses and
+ * pine for shops, so the two rating scales never blur into one another.
+ */
+@theme {
+  --color-paper: #faf6ee;
+  --color-paper-2: #f3ecde;
+  --color-paper-3: #f0e9da;
+  --color-rule: #e0d5c0;
+  --color-rule-strong: #d6c8b0;
+  --color-mute-3: #c6b8a2;
+  --color-mute-2: #b9a88c;
+  --color-mute: #9c8e7c;
+  --color-ink-2: #6b5d4e;
+  --color-ink-3: #4a3a28;
+  --color-ink: #241b12;
+
+  --color-orange: #ee8723;
+  --color-amber: #fec43e;
+  --color-cream: #fdefcc;
+  --color-link: #a8500f;
+  --color-pine: #0f6f5c;
+
+  --color-refusal: #a8342a;
+  --color-refusal-ink: #7c2419;
+  --color-refusal-bg: #fbede9;
+
+  --font-serif: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-public-sans), system-ui, "Helvetica Neue", sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, Menlo, monospace;
+
+  --radius-card: 3px;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--color-link);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--color-orange);
+  }
+
+  /* Every focusable thing keeps a visible ring: the palette is low-contrast
+     enough that the browser default disappears against the paper. */
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+}
+
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-mute);
+}

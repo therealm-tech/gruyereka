@@ -6,6 +6,8 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
+        # A committed lockfile is legitimately large and must stay versioned.
+        exclude: ^gruyereka-web/package-lock\.json$
       - id: check-merge-conflict
       - id: detect-private-key
 
@@ -27,8 +29,8 @@ repos:
     hooks:
       - id: actionlint
 
-  # The test suite is not a hook: it needs a PostgreSQL server and it only gets
-  # slower. It runs in CI, in .github/workflows/quality.yaml.
+  # Neither test suite is a hook: the Rust one needs a PostgreSQL server and both
+  # only get slower. They run in CI, in .github/workflows/quality.yaml.
   - repo: local
     hooks:
       - id: cargo-fmt
@@ -44,4 +46,19 @@ repos:
         language: system
         types:
           - rust
+        pass_filenames: false
+      # Both run through npm so they execute inside gruyereka-web, where the
+      # Biome and TypeScript configurations live. They need its dependencies
+      # installed; see CONTRIBUTING.md.
+      - id: biome
+        name: biome check
+        entry: npm --prefix gruyereka-web run check
+        language: system
+        files: ^gruyereka-web/
+        pass_filenames: false
+      - id: tsc
+        name: tsc --noEmit
+        entry: npm --prefix gruyereka-web run typecheck
+        language: system
+        files: ^gruyereka-web/
         pass_filenames: false
