@@ -90,12 +90,21 @@ and the only client that does not hold a token of its own:
 
 ## Data flow
 
-**Recording a tasting.** The client authenticates, gets a cheese and a shop (or
-creates them), then posts a tasting. The handler validates the DTO, maps it to
-`NewTasting` with the caller's id as the author, and inserts. A cheese or shop
-id that does not exist comes back from PostgreSQL as a foreign-key violation and
-is answered `422 UNKNOWN_REFERENCE`, not `500` — the check is the database's,
-not a pre-flight `SELECT`, so two concurrent requests cannot race past it.
+**Recording a tasting.** The client authenticates, gets a shop and one or more
+cheeses (or creates them), then posts a visit: the shop, the day, and a list of
+cheeses each carrying its own rating, price and comment. The handler validates
+the DTO — a basket is never empty and never names the same cheese twice — and
+the repository writes the visit and its items in one transaction, so a single
+broken reference rolls the whole visit back rather than leaving half a basket.
+A cheese or shop id that does not exist comes back from PostgreSQL as a
+foreign-key violation and is answered `422 UNKNOWN_REFERENCE`, not `500` — the
+check is the database's, not a pre-flight `SELECT`, so two concurrent requests
+cannot race past it.
+
+A correction replaces the whole list of items rather than diffing it, which is
+why dropping a cheese from a visit needs no operation of its own. The author
+scope is checked on the parent row *before* an item is touched, so a refused
+correction cannot empty somebody else's basket on its way out.
 
 **Adding a shop.** The form searches Nominatim through a server action rather
 than a route of its own, so the browser never calls the geocoder and this app
@@ -107,8 +116,9 @@ object, and the action posts it to `POST /shops`. A second person adding the
 same cheesemonger gets a `409`, which is the reference doing its job.
 
 **Reading a cheese.** `GET /api/v1/cheeses/{cheese_id}` returns the cheese plus
-its tasting count and mean score, aggregated over every shop by correlated
-subqueries in the same statement. The mean is computed from `rating_score()`, a
+its tasting count and mean score, aggregated over the *items* that name it —
+never over the visits containing them — by correlated subqueries in the same
+statement. The mean is computed from `rating_score()`, a
 SQL function that projects the rating enum onto 1–5, so the ordering of the
 scale is defined once, in the schema.
 
@@ -134,7 +144,8 @@ valid until it expires, since the API cannot revoke one.
 
 ## State and persistence
 
-PostgreSQL holds users, cheeses, shops, tastings and shop reviews. The bucket
+PostgreSQL holds users, cheeses, shops, tastings, the cheeses of each tasting
+and shop reviews. The bucket
 holds photo objects keyed `cheeses/<cheese id>`; the row keeps the key, the
 bucket keeps the bytes.
 
@@ -155,12 +166,21 @@ Two identity rules carry most of the design:
 - **A shop is its OpenStreetMap reference.** Name and address are cached
   attributes; `(osm_element, osm_id)` is the key.
 
-A **tasting is an append-only log entry**, not a rating that gets overwritten: it
-carries the day it happened and the price paid that day, both of which move with
-time and shop. Tasting the same cheese at the same place again adds a row.
-Correcting a mistake is a `PUT` on that row, scoped to its author. A **shop
-review**, by contrast, is unique per author and shop — posting again rewrites
-it, because an opinion of a shop is a current position rather than an event.
+A **tasting is one visit, and an append-only log entry** rather than a rating
+that gets overwritten: it carries the day it happened and, per cheese, the price
+paid that day — both of which move with time and shop. Buying the same cheese at
+the same place again is another visit, not an edit. Correcting a mistake is a
+`PUT` on the visit, scoped to its author.
+
+**The rating and the price hang off the cheese, not off the visit.** A basket
+holds several cheeses and one score for all of them would let a good one carry a
+mediocre one — and there would be nowhere to put a price per kilogram, which is
+the whole point of the log. `(tasting, cheese)` is unique: the same cheese twice
+in one visit is one line.
+
+A **shop review**, by contrast, is unique per author and shop — posting again
+rewrites it, because an opinion of a shop is a current position rather than an
+event.
 
 ## Design decisions
 
@@ -248,6 +268,10 @@ step and puts the duplication somewhere a test can see it.
 - **A tasting is edited and deleted only by its author**, enforced in the
   `WHERE` clause rather than by a read-then-check, so somebody else's row reads
   as absent instead of forbidden.
+- **A tasting always holds at least one cheese.** The boundary refuses an empty
+  basket and the repository writes a visit and its items in one transaction, but
+  nothing in the schema enforces it: a `DELETE` straight against `tasting_items`
+  would leave a visit that records nothing.
 - **PostgreSQL 15 or later**, for `NULLS NOT DISTINCT` on the cheese identity
   index. On an older server the migration fails at startup rather than silently
   allowing duplicates.

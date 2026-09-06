@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CheesePhoto } from "@/components/cheeses/CheesePhoto";
-import { TastingRow, type TastingSubject } from "@/components/tastings/TastingRow";
+import { CheeseTastingRow, type TastingSubject } from "@/components/tastings/TastingRow";
 import { DesignationBadge, SoftBadge } from "@/components/ui/Badge";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ButtonLink } from "@/components/ui/Button";
@@ -63,22 +63,24 @@ function subjectOf(shop: Shop | undefined): TastingSubject | null {
     : { label: shop.name, href: { pathname: `/boutiques/${shop.id}` }, tone: "shop" };
 }
 
+/** What this cheese went for, visit by visit; the rest of a basket is not ours. */
+function pricesOf(tastings: readonly Tasting[], cheeseId: string): PricePerKg[] {
+  return tastings
+    .map((tasting) => tasting.items.find((item) => item.cheeseId === cheeseId)?.pricePerKg ?? null)
+    .filter((price): price is PricePerKg => price !== null);
+}
+
 /** The prices of the currency most recently used, so a range never mixes them. */
-function priceRange(tastings: readonly Tasting[]): { low: PricePerKg; high: PricePerKg } | null {
-  const priced = tastings.filter(
-    (tasting): tasting is Tasting & { pricePerKg: PricePerKg } => tasting.pricePerKg !== null,
-  );
-  const newest = priced[0];
+function priceRange(prices: readonly PricePerKg[]): { low: PricePerKg; high: PricePerKg } | null {
+  const newest = prices[0];
   if (newest === undefined) return null;
-  const sameCurrency = priced
-    .filter((tasting) => tasting.pricePerKg.currency === newest.pricePerKg.currency)
-    .map((tasting) => tasting.pricePerKg);
+  const sameCurrency = prices.filter((price) => price.currency === newest.currency);
   const amounts = sameCurrency.map((price) => price.amountCents);
   const low = Math.min(...amounts);
   const high = Math.max(...amounts);
   return {
-    low: { amountCents: low, currency: newest.pricePerKg.currency },
-    high: { amountCents: high, currency: newest.pricePerKg.currency },
+    low: { amountCents: low, currency: newest.currency },
+    high: { amountCents: high, currency: newest.currency },
   };
 }
 
@@ -146,7 +148,7 @@ export default async function CheesePage({
   );
 
   const average = formatAverage(cheese.averageScore);
-  const range = priceRange(tastings.items);
+  const range = priceRange(pricesOf(tastings.items, cheese.id));
   const remaining = tastings.total - tastings.items.length;
 
   return (
@@ -236,15 +238,23 @@ export default async function CheesePage({
             </p>
           ) : (
             <>
-              {tastings.items.map((tasting) => (
-                <TastingRow
-                  key={tasting.id}
-                  tasting={tasting}
-                  subject={subjectOf(shops.get(tasting.shopId))}
-                  mine={viewer !== null && viewer.id === tasting.userId}
-                  editable={viewer !== null && viewer.id === tasting.userId}
-                />
-              ))}
+              {tastings.items.map((tasting) => {
+                const item = tasting.items.find((one) => one.cheeseId === cheese.id);
+                // The listing filters on this cheese, so a visit without it
+                // would mean the API and this page disagree.
+                if (item === undefined) return null;
+                const own = viewer !== null && viewer.id === tasting.userId;
+                return (
+                  <CheeseTastingRow
+                    key={tasting.id}
+                    tasting={tasting}
+                    item={item}
+                    shop={subjectOf(shops.get(tasting.shopId))}
+                    mine={own}
+                    editable={own}
+                  />
+                );
+              })}
               {remaining > 0 ? (
                 <p className="border-t border-rule py-4 font-mono text-xs text-mute">
                   {remaining} dégustation{remaining > 1 ? "s" : ""} de plus, non affichée

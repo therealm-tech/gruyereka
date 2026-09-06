@@ -97,27 +97,41 @@ CREATE TABLE shops (
     CONSTRAINT shops_longitude_range CHECK (longitude BETWEEN -180 AND 180)
 );
 
+-- A tasting is one visit: one person, one shop, one day. What was tasted hangs
+-- off it as one row per cheese, because the rating and the price per kilogram
+-- belong to a cheese and not to the basket it came home in -- a mediocre cheese
+-- bought alongside two good ones must not inherit their score.
 CREATE TABLE tastings (
     id uuid PRIMARY KEY,
     user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    cheese_id uuid NOT NULL REFERENCES cheeses (id) ON DELETE CASCADE,
     shop_id uuid NOT NULL REFERENCES shops (id) ON DELETE CASCADE,
+    tasted_on date NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX tastings_shop_id_idx ON tastings (shop_id);
+CREATE INDEX tastings_user_id_idx ON tastings (user_id);
+
+CREATE TABLE tasting_items (
+    id uuid PRIMARY KEY,
+    tasting_id uuid NOT NULL REFERENCES tastings (id) ON DELETE CASCADE,
+    cheese_id uuid NOT NULL REFERENCES cheeses (id) ON DELETE CASCADE,
     rating rating_level NOT NULL,
     price_per_kg_cents bigint,
     currency char(3),
     comment text,
-    tasted_on date NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT tastings_price_positive CHECK (price_per_kg_cents > 0),
-    CONSTRAINT tastings_price_needs_currency CHECK (
+    -- The same cheese twice in one visit is one line, not two. Buying it again
+    -- another day is another visit, which is what keeps the price history.
+    CONSTRAINT tasting_items_cheese_key UNIQUE (tasting_id, cheese_id),
+    CONSTRAINT tasting_items_price_positive CHECK (price_per_kg_cents > 0),
+    CONSTRAINT tasting_items_price_needs_currency CHECK (
         (price_per_kg_cents IS NULL) = (currency IS NULL)
     )
 );
 
-CREATE INDEX tastings_cheese_id_idx ON tastings (cheese_id);
-CREATE INDEX tastings_shop_id_idx ON tastings (shop_id);
-CREATE INDEX tastings_user_id_idx ON tastings (user_id);
+CREATE INDEX tasting_items_tasting_id_idx ON tasting_items (tasting_id);
+CREATE INDEX tasting_items_cheese_id_idx ON tasting_items (cheese_id);
 
 CREATE TABLE shop_reviews (
     id uuid PRIMARY KEY,

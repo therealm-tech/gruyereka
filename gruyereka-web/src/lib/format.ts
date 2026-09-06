@@ -104,3 +104,8 @@ export function groupByMonth<T extends { tastedOn: string }>(
   }
   return bands;
 }
+
+/** The inverse of `parseAmountCents`, for a price going back into its input. */
+export function formatAmountForInput(price: PricePerKg | null): string {
+  return price === null ? "" : (price.amountCents / 100).toFixed(2).replace(".", ",");
+}

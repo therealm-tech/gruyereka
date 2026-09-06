@@ -215,11 +215,13 @@ mod tests {
                 "/api/v1/tastings",
                 Some(&token),
                 &json!({
-                    "cheeseId": cheese_id,
                     "shopId": shop_id,
-                    "rating": "DELICIOUS",
-                    "pricePerKg": {"amountCents": 3450, "currency": "EUR"},
                     "tastedOn": "2026-09-05",
+                    "items": [{
+                        "cheeseId": cheese_id,
+                        "rating": "DELICIOUS",
+                        "pricePerKg": {"amountCents": 3450, "currency": "EUR"},
+                    }],
                 }),
             ),
         )
@@ -235,6 +237,115 @@ mod tests {
         assert_eq!(refreshed.body["tastingCount"], 1);
         assert_eq!(refreshed.body["averageScore"], 5.0);
         assert!(refreshed.body["photoUrl"].is_null());
+    }
+
+    #[sqlx::test]
+    async fn scores_each_cheese_of_one_visit_on_its_own(pool: PgPool) {
+        let router = router(pool);
+        let token = register(&router, "camille@example.org").await;
+
+        let cheese = |name: &str, paste: &str| json!({"name": name, "milkTypes": ["COW"], "pasteType": paste});
+        let make = async |body| {
+            let response = call(
+                &router,
+                json_request("POST", "/api/v1/cheeses", Some(&token), &body),
+            )
+            .await;
+            assert_eq!(response.status, StatusCode::CREATED);
+            response.body["id"].as_str().unwrap().to_owned()
+        };
+        let comte = make(cheese("Comté", "PRESSED_COOKED")).await;
+        let brie = make(cheese("Brie", "SOFT_BLOOMY_RIND")).await;
+
+        let shop = call(
+            &router,
+            json_request(
+                "POST",
+                "/api/v1/shops",
+                Some(&token),
+                &json!({"name": "Fromagerie Beaufils", "kind": "CHEESEMONGER",
+                        "osm": {"element": "NODE", "id": 4_242_424_242_i64},
+                        "city": "Paris", "countryCode": "FR",
+                        "latitude": 48.8617, "longitude": 2.3626}),
+            ),
+        )
+        .await;
+        assert_eq!(shop.status, StatusCode::CREATED);
+
+        let visit = call(
+            &router,
+            json_request(
+                "POST",
+                "/api/v1/tastings",
+                Some(&token),
+                &json!({
+                    "shopId": shop.body["id"],
+                    "tastedOn": "2026-09-05",
+                    "items": [
+                        {"cheeseId": comte, "rating": "DELICIOUS",
+                         "pricePerKg": {"amountCents": 3450, "currency": "EUR"}},
+                        {"cheeseId": brie, "rating": "MEH"},
+                    ],
+                }),
+            ),
+        )
+        .await;
+        assert_eq!(visit.status, StatusCode::CREATED);
+        assert_eq!(visit.body["items"].as_array().unwrap().len(), 2);
+
+        // The whole point of the split: one basket, two averages, and the brie
+        // does not ride on the comté's score.
+        for (id, expected) in [(&comte, 5.0), (&brie, 3.0)] {
+            let fiche = call(&router, get_request(&format!("/api/v1/cheeses/{id}"))).await;
+            assert_eq!(fiche.status, StatusCode::OK);
+            assert_eq!(fiche.body["tastingCount"], 1);
+            assert_eq!(fiche.body["averageScore"], expected);
+        }
+
+        // And each cheese finds the visit, whole, from its own side.
+        let listed = call(
+            &router,
+            get_request(&format!("/api/v1/tastings?cheeseId={brie}")),
+        )
+        .await;
+        assert_eq!(listed.body["total"], 1);
+        assert_eq!(
+            listed.body["items"][0]["items"].as_array().unwrap().len(),
+            2
+        );
+    }
+
+    #[sqlx::test]
+    async fn refuses_a_visit_that_tasted_nothing(pool: PgPool) {
+        let router = router(pool);
+        let token = register(&router, "camille@example.org").await;
+        let shop = call(
+            &router,
+            json_request(
+                "POST",
+                "/api/v1/shops",
+                Some(&token),
+                &json!({"name": "Fromagerie", "kind": "CHEESEMONGER",
+                        "osm": {"element": "NODE", "id": 5_151_515_151_i64},
+                        "city": "Paris", "countryCode": "FR",
+                        "latitude": 48.86, "longitude": 2.36}),
+            ),
+        )
+        .await;
+
+        let empty = call(
+            &router,
+            json_request(
+                "POST",
+                "/api/v1/tastings",
+                Some(&token),
+                &json!({"shopId": shop.body["id"], "tastedOn": "2026-09-05", "items": []}),
+            ),
+        )
+        .await;
+
+        assert_eq!(empty.status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(empty.body["fields"]["items"][0], "basket_empty");
     }
 
     #[sqlx::test]
@@ -451,8 +562,8 @@ mod role_tests {
                 "POST",
                 "/api/v1/tastings",
                 Some(token),
-                &json!({"cheeseId": cheese.body["id"], "shopId": shop.body["id"],
-                        "rating": "GOOD", "tastedOn": "2026-09-05"}),
+                &json!({"shopId": shop.body["id"], "tastedOn": "2026-09-05",
+                        "items": [{"cheeseId": cheese.body["id"], "rating": "GOOD"}]}),
             ),
         )
         .await;

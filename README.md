@@ -10,16 +10,19 @@ Rate the cheese you bought, and the shop you bought it from.
 
 Gruyereka records what a cheese tasted like *at the place it was bought*. A
 cheese exists on its own — name, milks, paste, quality scheme, aging — and a
-tasting ties it to one shop, on one day, with an optional price per kilogram and
-a comment. Shops are reviewed separately, out of five.
+tasting is one visit: one shop, one day, and every cheese brought home from it.
+Each of them keeps its own rating, its own price per kilogram and its own
+comment. Shops are reviewed separately, out of five.
 
 - Cheeses are identified by name, milk types, paste and aging, so an 18-month
   Comté and a 36-month Comté are two different cheeses.
 - Shops are identified by their OpenStreetMap reference, resolved by the client.
 - Accounts hold one of three roles: a user owns their own ratings, a moderator
   rewrites and deletes anybody's, an administrator hands out the roles.
-- A tasting is a dated log entry, not a mutable rating: tasting the same cheese
-  at the same shop again adds an entry and keeps the price history.
+- A tasting is a dated log entry, not a mutable rating: buying the same cheese at
+  the same shop again is another visit, which is what keeps the price history.
+- A rating belongs to a cheese and never to the basket it came home in, so one
+  bought beside two better ones keeps its own score.
 
 The repository holds `gruyereka-api/`, the HTTP API written in Rust, and
 `gruyereka-web/`, the web client written in TypeScript on Next.js. The browser

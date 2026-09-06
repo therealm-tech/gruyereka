@@ -37,37 +37,53 @@ pub struct PricePerKg {
     pub currency: String,
 }
 
+/// One cheese inside a visit. The rating and the price live here rather than on
+/// the tasting: a basket holds several cheeses and averaging them together
+/// would let a good one carry a mediocre one.
+#[derive(Debug, Clone)]
+pub struct TastingItem {
+    pub id: Uuid,
+    pub cheese_id: Uuid,
+    pub rating: RatingLevel,
+    pub price_per_kg: Option<PricePerKg>,
+    pub comment: Option<String>,
+}
+
+/// One visit: one person, one shop, one day, and everything tasted then.
 #[derive(Debug, Clone)]
 pub struct Tasting {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub cheese_id: Uuid,
     pub shop_id: Uuid,
-    pub rating: RatingLevel,
-    pub price_per_kg: Option<PricePerKg>,
-    pub comment: Option<String>,
     pub tasted_on: NaiveDate,
+    /// Never empty — a visit with nothing tasted is not a record of anything.
+    pub items: Vec<TastingItem>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone)]
-pub struct NewTasting {
-    pub user_id: Uuid,
+pub struct NewTastingItem {
     pub cheese_id: Uuid,
-    pub shop_id: Uuid,
     pub rating: RatingLevel,
     pub price_per_kg: Option<PricePerKg>,
     pub comment: Option<String>,
-    pub tasted_on: NaiveDate,
 }
 
 #[derive(Debug, Clone)]
-pub struct TastingUpdate {
-    pub rating: RatingLevel,
-    pub price_per_kg: Option<PricePerKg>,
-    pub comment: Option<String>,
+pub struct NewTasting {
+    pub user_id: Uuid,
+    pub shop_id: Uuid,
     pub tasted_on: NaiveDate,
+    pub items: Vec<NewTastingItem>,
+}
+
+/// A correction replaces the whole set of items: the shop and the author are
+/// fixed at creation, everything else is rewritten in one go.
+#[derive(Debug, Clone)]
+pub struct TastingUpdate {
+    pub tasted_on: NaiveDate,
+    pub items: Vec<NewTastingItem>,
 }
 
 /// Filters a tasting listing can be narrowed with. All optional and combinable.

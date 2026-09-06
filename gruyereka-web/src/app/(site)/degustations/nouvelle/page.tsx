@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { findCheeseOptions, findShopOptions, type Option } from "@/app/actions/pick";
-import { TastingForm } from "@/components/tastings/TastingForm";
+import { type BasketRow, TastingForm } from "@/components/tastings/TastingForm";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { getCheese } from "@/lib/api/cheeses";
 import { getShop } from "@/lib/api/shops";
@@ -50,6 +50,7 @@ export default async function NewTastingPage({
 
   const { fromage, boutique } = await searchParams;
   const [cheese, shop] = await Promise.all([cheeseOption(fromage), shopOption(boutique)]);
+  const first: BasketRow = { cheese, rating: null, price: "", comment: "" };
 
   return (
     <div className="flex flex-col gap-6">
@@ -57,15 +58,17 @@ export default async function NewTastingPage({
       <div className="flex flex-col gap-2">
         <h1 className="display-serif text-4xl leading-none">Noter une dégustation</h1>
         <p className="max-w-prose text-[15px] leading-relaxed text-ink-2 text-pretty">
-          Une dégustation est datée : le même fromage racheté ailleurs, ou plus tard, s’ajoute au
-          lieu de remplacer. C’est ce qui fait l’historique des prix.
+          Une visite, une boutique, un jour — et autant de fromages que vous en avez rapporté.
+          Chacun garde sa note et son prix, parce qu’un bon voisin ne rattrape pas un fromage
+          décevant.
         </p>
       </div>
       <TastingForm
-        existing={null}
-        cheese={cheese}
         shop={shop}
+        initialRows={[first]}
+        currency="EUR"
         today={todayIso()}
+        tastedOn={todayIso()}
         findCheeses={findCheeseOptions}
         findShops={findShopOptions}
       />

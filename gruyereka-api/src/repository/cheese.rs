@@ -106,10 +106,10 @@ impl CheeseRepository {
         let row = sqlx::query_as::<_, CheeseSummaryRow>(
             "SELECT id, name, milk_types, paste_type, designation, aging_months,
                     photo_key, created_by, created_at, updated_at,
-                    (SELECT count(*) FROM tastings t WHERE t.cheese_id = c.id)
+                    (SELECT count(*) FROM tasting_items i WHERE i.cheese_id = c.id)
                         AS tasting_count,
-                    (SELECT avg(rating_score(t.rating))::double precision
-                     FROM tastings t WHERE t.cheese_id = c.id)
+                    (SELECT avg(rating_score(i.rating))::double precision
+                     FROM tasting_items i WHERE i.cheese_id = c.id)
                         AS average_score
              FROM cheeses c WHERE id = $1",
         )
@@ -136,10 +136,10 @@ impl CheeseRepository {
         let rows = sqlx::query_as::<_, CheeseSummaryRow>(
             "SELECT id, name, milk_types, paste_type, designation, aging_months,
                     photo_key, created_by, created_at, updated_at,
-                    (SELECT count(*) FROM tastings t WHERE t.cheese_id = c.id)
+                    (SELECT count(*) FROM tasting_items i WHERE i.cheese_id = c.id)
                         AS tasting_count,
-                    (SELECT avg(rating_score(t.rating))::double precision
-                     FROM tastings t WHERE t.cheese_id = c.id)
+                    (SELECT avg(rating_score(i.rating))::double precision
+                     FROM tasting_items i WHERE i.cheese_id = c.id)
                         AS average_score
              FROM cheeses c
              WHERE $1::text IS NULL OR normalized_name LIKE $1

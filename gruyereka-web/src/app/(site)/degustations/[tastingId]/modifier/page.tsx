@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { findCheeseOptions, findShopOptions, type Option } from "@/app/actions/pick";
 import { removeTasting } from "@/app/actions/tastings";
-import { TastingForm } from "@/components/tastings/TastingForm";
+import { type BasketRow, TastingForm } from "@/components/tastings/TastingForm";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { getCheese } from "@/lib/api/cheeses";
 import { ApiError } from "@/lib/api/errors";
 import type { Tasting } from "@/lib/api/schemas";
 import { getShop } from "@/lib/api/shops";
 import { getTasting } from "@/lib/api/tastings";
-import { formatShopAddress, todayIso } from "@/lib/format";
+import { formatAmountForInput, formatShopAddress, todayIso } from "@/lib/format";
 import { currentUser } from "@/lib/session";
-import { cheeseMetaLine } from "@/lib/vocabulary";
+import { CURRENCIES, type Currency, cheeseMetaLine } from "@/lib/vocabulary";
 
 export const metadata: Metadata = {
   title: "Corriger une dégustation",
@@ -51,6 +51,16 @@ async function shopOption(shopId: string): Promise<Option | null> {
   }
 }
 
+/**
+ * The visit carries one currency, so the first priced cheese decides it. A code
+ * the form does not offer falls back rather than opening a select on a value it
+ * cannot show.
+ */
+function currencyOf(tasting: Tasting): Currency {
+  const code = tasting.items.find((item) => item.pricePerKg !== null)?.pricePerKg?.currency;
+  return (CURRENCIES as readonly string[]).includes(code ?? "") ? (code as Currency) : "EUR";
+}
+
 export default async function EditTastingPage({
   params,
 }: {
@@ -65,9 +75,18 @@ export default async function EditTastingPage({
   // nobody types a correction they were never going to be allowed to save.
   if (tasting.userId !== viewer.id) notFound();
 
-  const [cheese, shop] = await Promise.all([
-    cheeseOption(tasting.cheeseId),
+  const [shop, rows] = await Promise.all([
     shopOption(tasting.shopId),
+    Promise.all(
+      tasting.items.map(
+        async (item): Promise<BasketRow> => ({
+          cheese: await cheeseOption(item.cheeseId),
+          rating: item.rating,
+          price: formatAmountForInput(item.pricePerKg),
+          comment: item.comment ?? "",
+        }),
+      ),
+    ),
   ]);
 
   return (
@@ -76,23 +95,26 @@ export default async function EditTastingPage({
       <h1 className="display-serif text-4xl leading-none">Corriger une dégustation</h1>
 
       <TastingForm
-        existing={tasting}
-        cheese={cheese}
+        tastingId={tasting.id}
         shop={shop}
+        initialRows={rows}
+        currency={currencyOf(tasting)}
         today={todayIso()}
+        tastedOn={tasting.tastedOn}
         findCheeses={findCheeseOptions}
         findShops={findShopOptions}
       />
 
       <form
         action={removeTasting}
-        className="flex w-full flex-col gap-3 border-t border-rule pt-6 lg:w-[620px]"
+        className="flex w-full flex-col gap-3 border-t border-rule pt-6 lg:w-[680px]"
       >
         <input type="hidden" name="tastingId" value={tasting.id} />
         <h2 className="label-mono">Supprimer</h2>
         <p className="text-[13px] leading-relaxed text-ink-2 text-pretty">
-          La ligne disparaît du carnet et de la moyenne du fromage. Le prix relevé ce jour-là part
-          avec elle.
+          Toute la visite disparaît, avec les {tasting.items.length} fromage
+          {tasting.items.length > 1 ? "s" : ""} qu’elle porte et les prix relevés ce jour-là. Pour
+          n’en retirer qu’un, enlevez sa ligne ci-dessus et enregistrez.
         </p>
         <button
           type="submit"

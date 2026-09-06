@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ShopReviewForm } from "@/components/shops/ShopReviewForm";
 import { ShopReviewRow } from "@/components/shops/ShopReviewRow";
-import { TastingRow, type TastingSubject } from "@/components/tastings/TastingRow";
+import { TastingRow } from "@/components/tastings/TastingRow";
 import { SoftBadge } from "@/components/ui/Badge";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ButtonLink } from "@/components/ui/Button";
@@ -15,7 +15,7 @@ import { getShop, listShopReviews } from "@/lib/api/shops";
 import { listTastings } from "@/lib/api/tastings";
 import { filledHoles, formatAverage, formatShopAddress } from "@/lib/format";
 import { currentUser } from "@/lib/session";
-import { cheeseMetaLine, shopKindLabels } from "@/lib/vocabulary";
+import { shopKindLabels } from "@/lib/vocabulary";
 
 const REVIEWS_SHOWN = 50;
 const TASTINGS_SHOWN = 20;
@@ -84,12 +84,6 @@ function structuredData(shop: Shop): string {
   return JSON.stringify(payload).replaceAll("<", "\\u003c");
 }
 
-function subjectOf(cheese: Cheese | undefined): TastingSubject | null {
-  return cheese === undefined
-    ? null
-    : { label: cheese.name, href: { pathname: `/fromages/${cheese.id}` }, tone: "cheese" };
-}
-
 export default async function ShopPage({ params }: { params: Promise<{ shopId: string }> }) {
   const { shopId } = await params;
   const [shop, reviews, tastings, viewer] = await Promise.all([
@@ -99,7 +93,9 @@ export default async function ShopPage({ params }: { params: Promise<{ shopId: s
     currentUser(),
   ]);
 
-  const cheeseIds = [...new Set(tastings.items.map((tasting) => tasting.cheeseId))];
+  const cheeseIds = [
+    ...new Set(tastings.items.flatMap((tasting) => tasting.items.map((one) => one.cheeseId))),
+  ];
   const cheeses = new Map<string, Cheese>();
   await Promise.all(
     cheeseIds.map(async (cheeseId) => {
@@ -185,21 +181,14 @@ export default async function ShopPage({ params }: { params: Promise<{ shopId: s
               </p>
             ) : (
               tastings.items.map((tasting) => {
-                const cheese = cheeses.get(tasting.cheeseId);
+                const own = viewer !== null && viewer.id === tasting.userId;
                 return (
                   <TastingRow
                     key={tasting.id}
                     tasting={tasting}
-                    subject={subjectOf(cheese)}
-                    secondary={
-                      cheese === undefined
-                        ? undefined
-                        : cheeseMetaLine(cheese.milkTypes, cheese.pasteType, cheese.agingMonths, {
-                            short: true,
-                          })
-                    }
-                    mine={viewer !== null && viewer.id === tasting.userId}
-                    editable={viewer !== null && viewer.id === tasting.userId}
+                    cheeses={cheeses}
+                    mine={own}
+                    editable={own}
                   />
                 );
               })

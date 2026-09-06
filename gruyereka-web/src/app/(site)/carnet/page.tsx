@@ -11,7 +11,7 @@ import { isTransportFailure } from "@/lib/api/errors";
 import type { Page as ApiPage, Cheese, Shop, Tasting } from "@/lib/api/schemas";
 import { getShop } from "@/lib/api/shops";
 import { listTastings } from "@/lib/api/tastings";
-import { formatShopAddress, groupByMonth } from "@/lib/format";
+import { groupByMonth } from "@/lib/format";
 import { currentUser } from "@/lib/session";
 
 const PER_PAGE = 30;
@@ -59,14 +59,19 @@ export default async function CarnetPage({
   }
 
   const [cheeses, shops] = await Promise.all([
-    resolve<Cheese>([...new Set(result.items.map((one) => one.cheeseId))], getCheese),
+    resolve<Cheese>(
+      [...new Set(result.items.flatMap((one) => one.items.map((item) => item.cheeseId)))],
+      getCheese,
+    ),
     resolve<Shop>([...new Set(result.items.map((one) => one.shopId))], getShop),
   ]);
 
-  const subjectOf = (cheese: Cheese | undefined): TastingSubject | null =>
-    cheese === undefined
+  // The carnet is read cheese-first, so the row names them itself; the shop is
+  // the other end of the visit and the only thing left to link to.
+  const subjectOf = (shop: Shop | undefined): TastingSubject | null =>
+    shop === undefined
       ? null
-      : { label: cheese.name, href: { pathname: `/fromages/${cheese.id}` }, tone: "cheese" };
+      : { label: shop.name, href: { pathname: `/boutiques/${shop.id}` }, tone: "shop" };
 
   return (
     <div className="flex flex-col gap-5">
@@ -104,21 +109,16 @@ export default async function CarnetPage({
             {groupByMonth(result.items).map((band) => (
               <section key={band.month} className="flex flex-col">
                 <h2 className="label-mono pb-1">{band.month}</h2>
-                {band.entries.map((tasting) => {
-                  const shop = shops.get(tasting.shopId);
-                  return (
-                    <TastingRow
-                      key={tasting.id}
-                      tasting={tasting}
-                      subject={subjectOf(cheeses.get(tasting.cheeseId))}
-                      secondary={
-                        shop === undefined ? undefined : `${shop.name} · ${formatShopAddress(shop)}`
-                      }
-                      mine={false}
-                      editable
-                    />
-                  );
-                })}
+                {band.entries.map((tasting) => (
+                  <TastingRow
+                    key={tasting.id}
+                    tasting={tasting}
+                    cheeses={cheeses}
+                    subject={subjectOf(shops.get(tasting.shopId))}
+                    mine={false}
+                    editable
+                  />
+                ))}
               </section>
             ))}
           </div>

@@ -40,17 +40,25 @@ export function getTasting(tastingId: string): Promise<Tasting> {
   });
 }
 
-export type NewTasting = {
+export type NewTastingItem = {
   cheeseId: string;
-  shopId: string;
   rating: RatingLevel;
   pricePerKg: PricePerKg | null;
   comment: string | null;
-  tastedOn: string;
 };
 
-/** The cheese and the shop are fixed at creation: a correction cannot move one. */
-export type TastingEdit = Omit<NewTasting, "cheeseId" | "shopId">;
+export type NewTasting = {
+  shopId: string;
+  tastedOn: string;
+  items: NewTastingItem[];
+};
+
+/**
+ * The shop and the author are fixed at creation; the day and the whole list of
+ * cheeses are rewritten in one go, so dropping a cheese from a visit is sending
+ * the list without it.
+ */
+export type TastingEdit = Omit<NewTasting, "shopId">;
 
 export function createTasting(input: NewTasting, token: string): Promise<Tasting> {
   return apiRequest({

@@ -2,92 +2,176 @@ import Link from "next/link";
 import type { ComponentProps } from "react";
 import { PinIcon, WedgeIcon } from "@/components/ui/Icon";
 import { RatingHoles } from "@/components/ui/RatingHoles";
-import type { Tasting } from "@/lib/api/schemas";
+import type { Cheese, Tasting, TastingItem } from "@/lib/api/schemas";
 import { formatDay, formatPricePerKg } from "@/lib/format";
 import { ratingLabels, ratingScores } from "@/lib/vocabulary";
 
-/**
- * The other end of the tasting: a cheese fiche names the shop, a shop fiche
- * names the cheese, and the carnet names the cheese with the shop underneath.
- * `null` is a row whose subject was deleted, which still reads.
- */
+/** Something a row points at. `null` is a fiche deleted since, which still reads. */
 export type TastingSubject = {
   label: string;
   href: ComponentProps<typeof Link>["href"];
   tone: "cheese" | "shop";
 };
 
+function Header({
+  tasting,
+  subject,
+  mine,
+  editable,
+}: {
+  tasting: Tasting;
+  subject: TastingSubject | null | undefined;
+  mine: boolean;
+  editable: boolean;
+}) {
+  const Icon = subject?.tone === "cheese" ? WedgeIcon : PinIcon;
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <div className="flex min-w-0 items-baseline gap-2">
+        {subject === undefined ? null : (
+          <>
+            <Icon
+              className={`shrink-0 self-center ${
+                subject?.tone === "cheese" ? "text-link" : "text-pine"
+              }`}
+              size={15}
+            />
+            {subject === null ? (
+              <span className="text-[15px] font-semibold text-mute">Fiche retirée</span>
+            ) : (
+              <Link href={subject.href} className="text-[15px] font-semibold text-ink">
+                {subject.label}
+              </Link>
+            )}
+          </>
+        )}
+        {/* The separator belongs to the name before it; on a shop's own fiche
+            there is none, and a leading middot would dangle. */}
+        {mine ? (
+          <span className="text-[13px] text-mute">{subject === undefined ? "vous" : "· vous"}</span>
+        ) : null}
+      </div>
+      <div className="flex items-center gap-4">
+        <time dateTime={tasting.tastedOn} className="font-mono text-xs text-mute">
+          {formatDay(tasting.tastedOn)}
+        </time>
+        {editable ? (
+          <Link
+            href={{ pathname: `/degustations/${tasting.id}/modifier` }}
+            className="text-[13px] font-semibold text-link"
+          >
+            Corriger
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function Scored({ item, name }: { item: TastingItem; name: string | null }) {
+  return (
+    <div className="flex flex-col gap-1 border-l-2 border-rule pl-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="text-sm font-semibold">{name ?? "Fromage retiré"}</span>
+          <RatingHoles
+            filled={ratingScores[item.rating]}
+            label={`Noté ${ratingLabels[item.rating]}`}
+          />
+          <span className="text-[13px]">{ratingLabels[item.rating]}</span>
+        </div>
+        {item.pricePerKg === null ? null : (
+          <span className="font-mono text-[13px] text-ink-2">
+            {formatPricePerKg(item.pricePerKg)}
+          </span>
+        )}
+      </div>
+      {item.comment === null ? null : (
+        <p className="text-sm leading-relaxed text-pretty">{item.comment}</p>
+      )}
+    </div>
+  );
+}
+
 /**
- * One dated entry, not a rating that gets overwritten: the same cheese at the
- * same shop on another day is another row, which is why the date and the price
- * carry as much weight as the level.
+ * A whole visit: the day, where it happened, and every cheese brought home from
+ * it with its own score. Used where the visit is the subject — the carnet and a
+ * shop's fiche.
+ *
+ * `subject` is the other end of the visit: the shop in a carnet, and nothing at
+ * all on a shop's own fiche, where naming it on every row would repeat the page
+ * title. `null` stands for a fiche deleted since.
  */
 export function TastingRow({
   tasting,
+  cheeses,
   subject,
-  secondary,
   mine,
   editable = false,
 }: {
   tasting: Tasting;
-  subject: TastingSubject | null;
-  secondary?: string | undefined;
+  cheeses: ReadonlyMap<string, Cheese>;
+  subject?: TastingSubject | null;
   mine: boolean;
   editable?: boolean;
 }) {
-  const score = ratingScores[tasting.rating];
-  const Icon = subject?.tone === "cheese" ? WedgeIcon : PinIcon;
+  return (
+    <article className="flex flex-col gap-3 border-t border-rule py-4">
+      <Header tasting={tasting} subject={subject} mine={mine} editable={editable} />
+      <div className="flex flex-col gap-3">
+        {tasting.items.map((item) => (
+          <Scored key={item.id} item={item} name={cheeses.get(item.cheeseId)?.name ?? null} />
+        ))}
+      </div>
+    </article>
+  );
+}
 
+/**
+ * The same visit seen from one cheese. A cheese's fiche cares about its own
+ * score and what it went for, not about the rest of the basket — so the rest is
+ * a count rather than a list.
+ */
+export function CheeseTastingRow({
+  tasting,
+  item,
+  shop,
+  mine,
+  editable = false,
+}: {
+  tasting: Tasting;
+  item: TastingItem;
+  shop: TastingSubject | null;
+  mine: boolean;
+  editable?: boolean;
+}) {
+  const alongside = tasting.items.length - 1;
   return (
     <article className="flex flex-col gap-2.5 border-t border-rule py-4">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-        <div className="flex min-w-0 items-start gap-2">
-          <Icon
-            className={`mt-px shrink-0 ${subject?.tone === "cheese" ? "text-link" : "text-pine"}`}
-            size={15}
+      <Header tasting={tasting} subject={shop} mine={mine} editable={editable} />
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div className="flex items-center gap-2.5">
+          <RatingHoles
+            filled={ratingScores[item.rating]}
+            label={`Noté ${ratingLabels[item.rating]}`}
           />
-          <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="flex flex-wrap items-center gap-2">
-              {subject === null ? (
-                <span className="text-[15px] font-semibold text-mute">Fiche retirée</span>
-              ) : (
-                <Link href={subject.href} className="text-[15px] font-semibold text-ink">
-                  {subject.label}
-                </Link>
-              )}
-              {mine ? <span className="text-[13px] text-mute">· vous</span> : null}
-            </span>
-            {secondary === undefined ? null : (
-              <span className="font-mono text-[11px] text-mute">{secondary}</span>
-            )}
+          <span className="text-[13px] font-semibold">{ratingLabels[item.rating]}</span>
+        </div>
+        {item.pricePerKg === null ? null : (
+          <span className="font-mono text-[13px] text-ink-2">
+            {formatPricePerKg(item.pricePerKg)}
           </span>
-        </div>
-        <div className="flex items-center gap-4">
-          {tasting.pricePerKg === null ? null : (
-            <span className="font-mono text-[13px] text-ink-2">
-              {formatPricePerKg(tasting.pricePerKg)}
-            </span>
-          )}
-          <time dateTime={tasting.tastedOn} className="font-mono text-xs text-mute">
-            {formatDay(tasting.tastedOn)}
-          </time>
-          {editable ? (
-            <Link
-              href={{ pathname: `/degustations/${tasting.id}/modifier` }}
-              className="text-[13px] font-semibold text-link"
-            >
-              Corriger
-            </Link>
-          ) : null}
-        </div>
+        )}
       </div>
-      <div className="flex items-center gap-2.5">
-        <RatingHoles filled={score} label={`Noté ${ratingLabels[tasting.rating]}`} />
-        <span className="text-[13px] font-semibold">{ratingLabels[tasting.rating]}</span>
-      </div>
-      {tasting.comment === null ? null : (
-        <p className="text-sm leading-relaxed text-pretty">{tasting.comment}</p>
+      {item.comment === null ? null : (
+        <p className="text-sm leading-relaxed text-pretty">{item.comment}</p>
       )}
+      {alongside > 0 ? (
+        <p className="font-mono text-[11px] text-mute-2">
+          Goûté avec {alongside} autre{alongside > 1 ? "s" : ""} fromage
+          {alongside > 1 ? "s" : ""} ce jour-là.
+        </p>
+      ) : null}
     </article>
   );
 }

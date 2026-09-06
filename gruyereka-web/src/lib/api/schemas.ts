@@ -53,15 +53,29 @@ export const cheeseSchema = z.object({
 });
 export type Cheese = z.infer<typeof cheeseSchema>;
 
-export const tastingSchema = z.object({
+/**
+ * One cheese inside a visit. The rating and the price hang here rather than on
+ * the tasting: a basket holds several cheeses and averaging them together would
+ * let a good one carry a mediocre one.
+ */
+export const tastingItemSchema = z.object({
   id: z.uuid(),
-  userId: z.uuid(),
   cheeseId: z.uuid(),
-  shopId: z.uuid(),
   rating: z.enum(RATING_LEVELS),
   pricePerKg: pricePerKgSchema.nullable(),
   comment: z.string().nullable(),
+});
+export type TastingItem = z.infer<typeof tastingItemSchema>;
+
+/** One visit: one person, one shop, one day, and everything tasted then. */
+export const tastingSchema = z.object({
+  id: z.uuid(),
+  userId: z.uuid(),
+  shopId: z.uuid(),
   tastedOn: z.iso.date(),
+  // The API refuses an empty basket, and a listing that showed one would be a
+  // row saying nothing; a contract that drifted this far should fail loudly.
+  items: z.array(tastingItemSchema).min(1),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
