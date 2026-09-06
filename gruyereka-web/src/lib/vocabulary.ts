@@ -107,6 +107,14 @@ export const userRoleLabels: Record<UserRole, string> = {
   ADMIN: "Administrateur",
 };
 
+/** What the role actually lets somebody do, said once, on their own page. */
+export const userRoleDescriptions: Record<UserRole, string> = {
+  USER: "Vous écrivez vos dégustations et vos avis, et vous êtes seul à pouvoir les corriger ou les supprimer.",
+  MODERATOR:
+    "En plus des vôtres, vous corrigez et supprimez les dégustations et les avis de tout le monde.",
+  ADMIN: "En plus de la modération, vous distribuez les rôles — sauf le vôtre.",
+};
+
 /** Milk, paste and ageing, as one line under a cheese name. */
 export function cheeseMetaLine(
   milkTypes: readonly MilkType[],

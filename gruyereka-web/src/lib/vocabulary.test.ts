@@ -13,6 +13,7 @@ import {
   SHOP_KINDS,
   shopKindLabels,
   USER_ROLES,
+  userRoleDescriptions,
   userRoleLabels,
 } from "@/lib/vocabulary";
 
@@ -24,6 +25,7 @@ describe("the translation bundle", () => {
     for (const code of RATING_LEVELS) expect(ratingLabels[code]).toBeTruthy();
     for (const code of SHOP_KINDS) expect(shopKindLabels[code]).toBeTruthy();
     for (const code of USER_ROLES) expect(userRoleLabels[code]).toBeTruthy();
+    for (const code of USER_ROLES) expect(userRoleDescriptions[code]).toBeTruthy();
     expect(PROTECTED_DESIGNATIONS).toHaveLength(4);
   });
 

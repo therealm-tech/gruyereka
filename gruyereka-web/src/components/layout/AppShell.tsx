@@ -27,8 +27,10 @@ function Account({ user, onRail = false }: { user: User | null; onRail?: boolean
       </Link>
     );
   }
+  // The whole block is the way to the account, sign-out included; a rail with
+  // its own log-out button would spend a permanent slot on a yearly gesture.
   return (
-    <div className="flex items-center gap-2.5">
+    <Link href="/profil" className="flex items-center gap-2.5 text-ink hover:text-current">
       <span
         aria-hidden="true"
         className={`flex size-8 shrink-0 items-center justify-center rounded-full font-mono text-[11px] ${
@@ -45,7 +47,7 @@ function Account({ user, onRail = false }: { user: User | null; onRail?: boolean
           {userRoleLabels[user.role]}
         </span>
       </span>
-    </div>
+    </Link>
   );
 }
 

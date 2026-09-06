@@ -55,4 +55,16 @@ describe("AppShell", () => {
     expect(screen.getAllByText("Modérateur").length).toBeGreaterThan(0);
     expect(screen.queryByText("MODERATOR")).not.toBeInTheDocument();
   });
+
+  it("makes the account block the way to the profile, where signing out lives", () => {
+    render(
+      <AppShell user={CAMILLE}>
+        <p>contenu</p>
+      </AppShell>,
+    );
+
+    const toProfile = screen.getAllByRole("link", { name: /Camille Dupont/ });
+    expect(toProfile.length).toBeGreaterThan(0);
+    for (const link of toProfile) expect(link).toHaveAttribute("href", "/profil");
+  });
 });
