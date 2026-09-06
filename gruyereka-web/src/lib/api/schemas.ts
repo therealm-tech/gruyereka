@@ -86,6 +86,17 @@ export const shopSchema = z.object({
 });
 export type Shop = z.infer<typeof shopSchema>;
 
+export const shopReviewSchema = z.object({
+  id: z.uuid(),
+  userId: z.uuid(),
+  shopId: z.uuid(),
+  score: z.number().int().min(1).max(5),
+  comment: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+export type ShopReview = z.infer<typeof shopReviewSchema>;
+
 export const userSchema = z.object({
   id: z.uuid(),
   email: z.email(),

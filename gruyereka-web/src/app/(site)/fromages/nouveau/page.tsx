@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { NewCheeseForm } from "@/components/cheeses/NewCheeseForm";
-import { ChevronRightIcon } from "@/components/ui/Icon";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { currentUser } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -15,11 +14,7 @@ export default async function NewCheesePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <nav aria-label="Fil d’Ariane" className="flex items-center gap-2 text-[13px]">
-        <Link href="/fromages">Fromages</Link>
-        <ChevronRightIcon className="text-mute-2" size={13} />
-        <span className="font-mono text-mute">Nouvelle fiche</span>
-      </nav>
+      <Breadcrumb trail={[{ href: "/fromages", label: "Fromages" }]} current="Nouvelle fiche" />
       <h1 className="display-serif text-4xl leading-none">Ajouter un fromage</h1>
       <NewCheeseForm />
     </div>

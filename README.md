@@ -106,16 +106,24 @@ are reapplied if they have drifted. That is also how an instance recovers from
 losing its last administrator — restart it. The flip side is that changing that
 account's password by any other means is undone on the next boot.
 
-`gruyereka-web` reads three variables of its own:
+`gruyereka-web` reads five variables of its own:
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
 | `API_BASE_URL` | yes | — | Origin `gruyereka-api` answers on, without a trailing slash |
 | `PUBLIC_BASE_URL` | no | `http://localhost:3000` | Public origin of the client, for canonical links and the sitemap |
+| `NOMINATIM_BASE_URL` | no | `https://nominatim.openstreetmap.org` | Geocoder shop creation resolves against |
+| `NOMINATIM_USER_AGENT` | no | project name and URL | Sent on every geocoder call; the public instance blocks traffic that does not identify itself |
 | `LOG_LEVEL` | no | `info` | One of `debug`, `info`, `warn`, `error` |
 
-[gruyereka-web/.env.development](gruyereka-web/.env.development) sets all three
-for `npm run dev`, and Next.js loads it on its own. An exported value takes
+Set `NOMINATIM_USER_AGENT` to something carrying a real contact before running
+this anywhere public — that is the
+[usage policy](https://operations.osmfoundation.org/policies/nominatim/)'s
+condition for using the shared instance, along with one request per second,
+which the client enforces on its own.
+
+[gruyereka-web/.env.development](gruyereka-web/.env.development) sets what
+`npm run dev` needs, and Next.js loads it on its own. An exported value takes
 precedence, personal overrides go in an ignored `.env.local`, and the file is
 read only in development — a production build and `next start` take their
 configuration from the environment.

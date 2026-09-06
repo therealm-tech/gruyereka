@@ -20,6 +20,7 @@ graph LR
 
     browser -->|HTTPS, HTML and server actions| web
     web -->|HTTPS, JSON, bearer| api
+    web -->|HTTPS, shop lookup| osm
     client -->|HTTPS, JSON, bearer| api
     client -->|HTTPS, shop lookup| osm
     api -->|SQL over TCP| pg
@@ -27,9 +28,9 @@ graph LR
     browser -->|HTTPS, pre-signed URL| s3
 ```
 
-Two arrows the diagram is really about are the missing ones. `gruyereka-api`
-never talks to OpenStreetMap: a client resolves a shop before creating it and
-hands over the reference — see
+The arrow the diagram is really about is the missing one: `gruyereka-api` never
+talks to OpenStreetMap. Every client resolves a shop for itself before creating
+it and hands over the reference — see
 [ADR 0002](docs/adr/0002-resolve-shop-identity-against-openstreetmap-in-the-client.md).
 And the browser never talks to `gruyereka-api`: it reaches the API only through
 `gruyereka-web`, which holds the access token — see
@@ -67,12 +68,18 @@ and the only client that does not hold a token of its own:
 
 - **`app/`** — the routes. Public pages are server components that read the API
   and return finished HTML with their metadata, canonical link and `schema.org`
-  payload; writes are server actions. `app/photos/[cheeseId]/` relays the API's
-  photo redirect so the browser keeps talking to one origin.
+  payload; writes are server actions. Cheeses and shops are indexable; the
+  carnet, the forms and the correction pages are `noindex` and redirect a signed
+  out visitor to the sign-in. `app/photos/[cheeseId]/` relays the API's photo
+  redirect so the browser keeps talking to one origin.
 - **`lib/api/`** — the wire boundary. One `zod` schema per response, parsed on
   arrival, so a drifting contract fails here rather than three components later;
   `client.ts` is the only module that calls the API, and the only one that turns
   a refusal into an `ApiError` carrying its stable code.
+- **`lib/api/nominatim.ts`** — the geocoder, and the only outbound call that
+  does not go to `gruyereka-api`. It turns a query into candidate shops, drops
+  the hits that cannot become one, and holds the outbound rate to the one
+  request per second the usage policy allows.
 - **`lib/session.ts`** — the access token, in an httpOnly cookie this server
   sets and reads. Nothing in `components/` can see it.
 - **`lib/vocabulary.ts`** — the French wording for every closed vocabulary. The
@@ -88,6 +95,15 @@ creates them), then posts a tasting. The handler validates the DTO, maps it to
 id that does not exist comes back from PostgreSQL as a foreign-key violation and
 is answered `422 UNKNOWN_REFERENCE`, not `500` — the check is the database's,
 not a pre-flight `SELECT`, so two concurrent requests cannot race past it.
+
+**Adding a shop.** The form searches Nominatim through a server action rather
+than a route of its own, so the browser never calls the geocoder and this app
+never becomes an open proxy for it — the action refuses a caller with no
+session for the same reason. What comes back is already shaped like a shop:
+name, street, postcode, town, country, coordinates and the
+`(osm_element, osm_id)` pair. Picking one fills a hidden field with that whole
+object, and the action posts it to `POST /shops`. A second person adding the
+same cheesemonger gets a `409`, which is the reference doing its job.
 
 **Reading a cheese.** `GET /api/v1/cheeses/{cheese_id}` returns the cheese plus
 its tasting count and mean score, aggregated over every shop by correlated
@@ -258,6 +274,16 @@ step and puts the duplication somewhere a test can see it.
 - **The wire contract is declared twice**, once as the API's DTOs and once as
   the web client's schemas. Nothing checks the two against each other: a change
   to one is caught at runtime by the client's parser, not at build time.
+- **The geocoder's rate limit is held per process.** The one-request-per-second
+  queue in `nominatim.ts` is a module-level variable, so two instances of
+  `gruyereka-web` behind a load balancer can send two requests in the same
+  second. Holding it across instances needs a shared store, which this does not
+  have.
+- **A shop review cannot be found past the first page of reviews.** The API
+  exposes `PUT` and `DELETE` on `reviews/me` but no `GET`, so the fiche looks
+  for the reader's own review in the page it already fetched. Further down the
+  list, the form opens blank — submitting it still overwrites, since the API
+  keys a review on its author.
 - **A tasting shows no author name.** `GET /users` is administrator-only and
   there is no public endpoint for a single account, so a client that is not an
   administrator cannot resolve the `userId` on a tasting or a review into a

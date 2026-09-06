@@ -32,6 +32,13 @@ export type ShopKind = (typeof SHOP_KINDS)[number];
 export const OSM_ELEMENTS = ["NODE", "WAY", "RELATION"] as const;
 export type OsmElement = (typeof OSM_ELEMENTS)[number];
 
+/**
+ * Not a vocabulary the API closes — it takes any ISO 4217 code — but the list
+ * the tasting form offers, so a price cannot be entered against a typo.
+ */
+export const CURRENCIES = ["EUR", "CHF", "GBP"] as const;
+export type Currency = (typeof CURRENCIES)[number];
+
 export const USER_ROLES = ["USER", "MODERATOR", "ADMIN"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
@@ -86,6 +93,12 @@ export const shopKindLabels: Record<ShopKind, string> = {
   SUPERMARKET: "Supermarché",
   FARM: "Ferme",
   OTHER: "Autre",
+};
+
+export const currencyLabels: Record<Currency, string> = {
+  EUR: "€ euro",
+  CHF: "CHF franc suisse",
+  GBP: "£ livre sterling",
 };
 
 export const userRoleLabels: Record<UserRole, string> = {

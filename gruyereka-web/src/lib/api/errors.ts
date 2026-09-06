@@ -80,3 +80,24 @@ export function sentenceFor(error: unknown): string {
 export function isApiError(error: unknown, code: ApiErrorCode): error is ApiError {
   return error instanceof ApiError && error.code === code;
 }
+
+/**
+ * The three ways a call can fail without the page itself being broken: a
+ * refusal, an unreachable server, a body off contract. Anything else is a bug
+ * in this client and belongs on the error boundary, so a listing rethrows it.
+ */
+export function isTransportFailure(
+  error: unknown,
+): error is ApiError | ApiUnreachableError | ApiContractError {
+  return (
+    error instanceof ApiError ||
+    error instanceof ApiUnreachableError ||
+    error instanceof ApiContractError
+  );
+}
+
+/** The stable code to show in small type, whichever of the three it was. */
+export function codeOf(error: ApiError | ApiUnreachableError | ApiContractError): string {
+  if (error instanceof ApiError) return error.code;
+  return error instanceof ApiContractError ? "API_OFF_CONTRACT" : "API_UNREACHABLE";
+}

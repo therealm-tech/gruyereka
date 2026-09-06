@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { addCheese } from "@/app/actions/cheeses";
 import { IDLE } from "@/app/actions/state";
 import { PhotoPicker } from "@/components/cheeses/PhotoPicker";
-import { CheckIcon } from "@/components/ui/Icon";
+import { ChoiceChip } from "@/components/ui/ChoiceChip";
 import { Notice } from "@/components/ui/Notice";
 import {
   MILK_TYPES,
@@ -16,10 +16,6 @@ import {
   type ProtectedDesignation,
   pasteLabels,
 } from "@/lib/vocabulary";
-
-const CHIP = "flex h-9 items-center gap-2 rounded-full px-3.5 text-sm";
-const CHIP_ON = `${CHIP} bg-ink font-medium text-paper`;
-const CHIP_OFF = `${CHIP} border border-rule text-ink-2`;
 
 export function NewCheeseForm() {
   const [state, action, pending] = useActionState(addCheese, IDLE);
@@ -65,23 +61,18 @@ export function NewCheeseForm() {
         <fieldset className="flex flex-col gap-2.5">
           <legend className="label-mono pb-1">Lait — un ou plusieurs</legend>
           <div className="flex flex-wrap gap-2.5">
-            {MILK_TYPES.map((milk) => {
-              const on = milkTypes.includes(milk);
-              return (
-                <label key={milk} className={on ? CHIP_ON : CHIP_OFF}>
-                  <input
-                    type="checkbox"
-                    name="milkTypes"
-                    value={milk}
-                    checked={on}
-                    onChange={() => toggleMilk(milk)}
-                    className="sr-only"
-                  />
-                  {milkLabels[milk]}
-                  {on ? <CheckIcon /> : null}
-                </label>
-              );
-            })}
+            {MILK_TYPES.map((milk) => (
+              <ChoiceChip
+                key={milk}
+                name="milkTypes"
+                value={milk}
+                type="checkbox"
+                checked={milkTypes.includes(milk)}
+                onChange={() => toggleMilk(milk)}
+              >
+                {milkLabels[milk]}
+              </ChoiceChip>
+            ))}
           </div>
           {fields?.milkTypes === undefined ? null : (
             <p className="text-xs text-refusal">{fields.milkTypes}</p>
@@ -110,35 +101,27 @@ export function NewCheeseForm() {
         <fieldset className="flex flex-col gap-2.5">
           <legend className="label-mono pb-1">Signe de qualité — facultatif</legend>
           <div className="flex flex-wrap gap-2.5">
-            {PROTECTED_DESIGNATIONS.map((sign) => {
-              const on = designation === sign;
-              return (
-                <label key={sign} className={on ? CHIP_ON : CHIP_OFF}>
-                  <input
-                    type="radio"
-                    name="designation"
-                    value={sign}
-                    checked={on}
-                    onChange={() => setDesignation(sign)}
-                    className="sr-only"
-                  />
-                  {sign}
-                  {on ? <CheckIcon /> : null}
-                </label>
-              );
-            })}
-            <label className={designation === null ? CHIP_ON : CHIP_OFF}>
-              <input
-                type="radio"
+            {PROTECTED_DESIGNATIONS.map((sign) => (
+              <ChoiceChip
+                key={sign}
                 name="designation"
-                value=""
-                checked={designation === null}
-                onChange={() => setDesignation(null)}
-                className="sr-only"
-              />
+                value={sign}
+                type="radio"
+                checked={designation === sign}
+                onChange={() => setDesignation(sign)}
+              >
+                {sign}
+              </ChoiceChip>
+            ))}
+            <ChoiceChip
+              name="designation"
+              value=""
+              type="radio"
+              checked={designation === null}
+              onChange={() => setDesignation(null)}
+            >
               Aucun
-              {designation === null ? <CheckIcon /> : null}
-            </label>
+            </ChoiceChip>
           </div>
         </fieldset>
 

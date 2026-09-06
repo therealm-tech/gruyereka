@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CheeseCard } from "@/components/cheeses/CheeseCard";
 import { CheeseGridSkeleton } from "@/components/cheeses/CheeseGridSkeleton";
-import { Pagination } from "@/components/cheeses/Pagination";
-import { SearchForm } from "@/components/cheeses/SearchForm";
+import { ApiFailure } from "@/components/ui/ApiFailure";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PlusIcon } from "@/components/ui/Icon";
-import { Notice } from "@/components/ui/Notice";
+import { Pagination } from "@/components/ui/Pagination";
+import { SearchForm } from "@/components/ui/SearchForm";
 import { listCheeses } from "@/lib/api/cheeses";
-import { ApiContractError, ApiError, ApiUnreachableError, sentenceFor } from "@/lib/api/errors";
+import { isTransportFailure } from "@/lib/api/errors";
 import type { Page as ApiPage, Cheese } from "@/lib/api/schemas";
 import { currentUser } from "@/lib/session";
 
@@ -43,41 +43,15 @@ function readPage(raw: string | undefined): number {
  */
 async function CheeseResults({ search, page }: { search: string | undefined; page: number }) {
   const signedIn = (await currentUser()) !== null;
-  let result: ApiPage<Cheese> | null = null;
-  let failure: unknown = null;
+  let result: ApiPage<Cheese>;
   try {
     result = await listCheeses({ search, page, perPage: PER_PAGE });
   } catch (error) {
-    if (
-      !(
-        error instanceof ApiError ||
-        error instanceof ApiUnreachableError ||
-        error instanceof ApiContractError
-      )
-    ) {
-      throw error;
-    }
-    failure = error;
+    if (!isTransportFailure(error)) throw error;
+    return <ApiFailure title="Le catalogue n’a pas pu être chargé" error={error} />;
   }
 
-  if (failure !== null) {
-    return (
-      <Notice
-        title="Le catalogue n’a pas pu être chargé"
-        code={
-          failure instanceof ApiError
-            ? failure.code
-            : failure instanceof ApiContractError
-              ? "API_OFF_CONTRACT"
-              : "API_UNREACHABLE"
-        }
-      >
-        {sentenceFor(failure)}
-      </Notice>
-    );
-  }
-
-  if (result === null || result.items.length === 0) {
+  if (result.items.length === 0) {
     // An empty catalogue must not be a dead end, so a signed-out visitor is
     // pointed at the sign-in rather than at a form that would turn them away.
     return (
@@ -109,10 +83,11 @@ async function CheeseResults({ search, page }: { search: string | undefined; pag
         ))}
       </div>
       <Pagination
+        pathname="/fromages"
+        query={{ search }}
         page={result.page}
         perPage={result.perPage}
         total={result.total}
-        search={search}
       />
     </>
   );
@@ -133,7 +108,12 @@ export default async function CheesesPage({
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <h1 className="display-serif text-4xl leading-none">Fromages</h1>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-          <SearchForm search={search} />
+          <SearchForm
+            action="/fromages"
+            search={search}
+            placeholder="Comté, Ossau-Iraty…"
+            label="Chercher un fromage"
+          />
           {signedIn ? (
             <ButtonLink href="/fromages/nouveau" variant="ghost" className="hidden md:inline-flex">
               <PlusIcon />

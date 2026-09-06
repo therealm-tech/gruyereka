@@ -63,9 +63,9 @@ export function AppShell({ user, children }: { user: User | null; children: Reac
         <RailNav />
         {user === null ? null : (
           <div className="pt-4">
-            <ButtonLink href="/fromages/nouveau" variant="accent" className="w-full">
+            <ButtonLink href="/degustations/nouvelle" variant="accent" className="w-full">
               <PlusIcon />
-              Ajouter un fromage
+              Noter une dégustation
             </ButtonLink>
           </div>
         )}

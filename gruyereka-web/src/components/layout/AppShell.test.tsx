@@ -15,14 +15,14 @@ const CAMILLE: User = {
 };
 
 describe("AppShell", () => {
-  it("offers no way to add a cheese to somebody who cannot", () => {
+  it("offers no way to note a tasting to somebody who cannot", () => {
     render(
       <AppShell user={null}>
         <p>contenu</p>
       </AppShell>,
     );
 
-    expect(screen.queryByRole("link", { name: /ajouter un fromage/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /noter une dégustation/i })).not.toBeInTheDocument();
     // The rail and the mobile header both render; CSS decides which one shows,
     // and jsdom applies none of it.
     const signIn = screen.getAllByRole("link", { name: "Se connecter" });
@@ -37,9 +37,9 @@ describe("AppShell", () => {
       </AppShell>,
     );
 
-    expect(screen.getByRole("link", { name: /ajouter un fromage/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /noter une dégustation/i })).toHaveAttribute(
       "href",
-      "/fromages/nouveau",
+      "/degustations/nouvelle",
     );
     expect(screen.queryAllByRole("link", { name: "Se connecter" })).toHaveLength(0);
   });

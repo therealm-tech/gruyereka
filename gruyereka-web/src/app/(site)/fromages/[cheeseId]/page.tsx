@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheesePhoto } from "@/components/cheeses/CheesePhoto";
-import { TastingRow } from "@/components/tastings/TastingRow";
+import { TastingRow, type TastingSubject } from "@/components/tastings/TastingRow";
 import { DesignationBadge, SoftBadge } from "@/components/ui/Badge";
-import { ChevronRightIcon } from "@/components/ui/Icon";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { ButtonLink } from "@/components/ui/Button";
+import { PlusIcon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { RatingHoles } from "@/components/ui/RatingHoles";
 import { getCheese } from "@/lib/api/cheeses";
@@ -53,6 +54,13 @@ export async function generateMetadata({
     alternates: { canonical: `/fromages/${cheese.id}` },
     openGraph: { title: cheese.name, description, type: "article" },
   };
+}
+
+/** The shop side of a row, absent when the shop was deleted since. */
+function subjectOf(shop: Shop | undefined): TastingSubject | null {
+  return shop === undefined
+    ? null
+    : { label: shop.name, href: { pathname: `/boutiques/${shop.id}` }, tone: "shop" };
 }
 
 /** The prices of the currency most recently used, so a range never mixes them. */
@@ -155,11 +163,7 @@ export default async function CheesePage({
         </Notice>
       ) : null}
 
-      <nav aria-label="Fil d’Ariane" className="flex items-center gap-2 text-[13px]">
-        <Link href="/fromages">Fromages</Link>
-        <ChevronRightIcon className="text-mute-2" size={13} />
-        <span className="font-mono text-mute">{cheese.name}</span>
-      </nav>
+      <Breadcrumb trail={[{ href: "/fromages", label: "Fromages" }]} current={cheese.name} />
 
       <div className="flex flex-col gap-8 lg:flex-row lg:gap-10">
         <div className="flex w-full shrink-0 flex-col gap-4.5 lg:w-[400px]">
@@ -213,7 +217,18 @@ export default async function CheesePage({
         </div>
 
         <section className="flex min-w-0 grow flex-col">
-          <h2 className="pb-3 display-serif text-3xl">Les dégustations</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-3 pb-3">
+            <h2 className="display-serif text-3xl">Les dégustations</h2>
+            {viewer === null ? null : (
+              <ButtonLink
+                href={{ pathname: "/degustations/nouvelle", query: { fromage: cheese.id } }}
+                variant="ghost"
+              >
+                <PlusIcon />
+                Noter une dégustation
+              </ButtonLink>
+            )}
+          </div>
           {tastings.items.length === 0 ? (
             <p className="border-t border-rule py-6 text-sm text-ink-2 text-pretty">
               Personne ne l’a encore goûté. La première dégustation ouvrira aussi son historique de
@@ -225,8 +240,9 @@ export default async function CheesePage({
                 <TastingRow
                   key={tasting.id}
                   tasting={tasting}
-                  shop={shops.get(tasting.shopId) ?? null}
+                  subject={subjectOf(shops.get(tasting.shopId))}
                   mine={viewer !== null && viewer.id === tasting.userId}
+                  editable={viewer !== null && viewer.id === tasting.userId}
                 />
               ))}
               {remaining > 0 ? (

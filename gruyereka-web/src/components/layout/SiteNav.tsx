@@ -4,7 +4,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { WedgeIcon } from "@/components/ui/Icon";
+import { BookIcon, PinIcon, WedgeIcon } from "@/components/ui/Icon";
 
 type NavItem = {
   href: Route;
@@ -14,9 +14,13 @@ type NavItem = {
 
 /**
  * Only the sections that exist. A nav entry pointing at a 404 is worse than a
- * short nav; shops and the tasting log join it with their own slices.
+ * short nav.
  */
-const ITEMS: readonly NavItem[] = [{ href: "/fromages", label: "Fromages", icon: WedgeIcon }];
+const ITEMS: readonly NavItem[] = [
+  { href: "/fromages", label: "Fromages", icon: WedgeIcon },
+  { href: "/boutiques", label: "Boutiques", icon: PinIcon },
+  { href: "/carnet", label: "Carnet", icon: BookIcon },
+];
 
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
