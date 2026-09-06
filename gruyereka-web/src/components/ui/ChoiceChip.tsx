@@ -23,7 +23,7 @@ export function ChoiceChip({
 }) {
   return (
     <label
-      className={`flex h-9 items-center gap-2 rounded-full px-3.5 text-sm ${
+      className={`flex h-9 cursor-pointer items-center gap-2 rounded-full px-3.5 text-sm ${
         checked ? "bg-ink font-medium text-paper" : "border border-rule text-ink-2"
       }`}
     >

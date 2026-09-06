@@ -70,6 +70,16 @@
     color: var(--color-link-hover);
   }
 
+  /* Browsers hand a <button> the arrow cursor and an <a> the pointer, so half
+     the controls here read as inert while the other half do not. A disabled one
+     keeps the arrow, because it is genuinely not clickable. A <label> standing
+     in for a hidden input is not covered — nothing distinguishes it from an
+     ordinary caption, so those carry `cursor-pointer` themselves. */
+  button:not(:disabled),
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+
   /* Every focusable thing keeps a visible ring: the palette is low-contrast
      enough that the browser default disappears against the paper. */
   :focus-visible {
