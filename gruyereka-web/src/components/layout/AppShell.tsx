@@ -16,10 +16,13 @@ function initials(displayName: string): string {
     .join("");
 }
 
-function Account({ user }: { user: User | null }) {
+function Account({ user, onRail = false }: { user: User | null; onRail?: boolean }) {
   if (user === null) {
     return (
-      <Link href="/connexion" className="text-sm font-semibold">
+      <Link
+        href="/connexion"
+        className={`text-sm font-semibold ${onRail ? "text-orange hover:text-amber" : ""}`}
+      >
         Se connecter
       </Link>
     );
@@ -28,13 +31,19 @@ function Account({ user }: { user: User | null }) {
     <div className="flex items-center gap-2.5">
       <span
         aria-hidden="true"
-        className="flex size-8 shrink-0 items-center justify-center rounded-full border border-rule bg-paper-2 font-mono text-[11px] text-ink-2"
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full font-mono text-[11px] ${
+          onRail ? "bg-rail-rule text-rail-mute" : "border border-rule bg-paper-2 text-ink-2"
+        }`}
       >
         {initials(user.displayName)}
       </span>
       <span className="flex flex-col gap-px">
-        <span className="text-sm font-semibold">{user.displayName}</span>
-        <span className="font-mono text-[10px] text-mute">{userRoleLabels[user.role]}</span>
+        <span className={`text-sm font-semibold ${onRail ? "text-rail-ink" : ""}`}>
+          {user.displayName}
+        </span>
+        <span className={`font-mono text-[10px] ${onRail ? "text-rail-mute" : "text-mute"}`}>
+          {userRoleLabels[user.role]}
+        </span>
       </span>
     </div>
   );
@@ -47,22 +56,22 @@ function Account({ user }: { user: User | null }) {
 export function AppShell({ user, children }: { user: User | null; children: ReactNode }) {
   return (
     <div className="flex min-h-dvh">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-rule px-4 pt-6 pb-5 md:flex">
-        <Link href="/fromages" className="px-2 pb-6 text-ink hover:text-ink">
+      <aside className="hidden w-60 shrink-0 flex-col bg-rail px-4 pt-6 pb-5 md:flex">
+        <Link href="/fromages" className="px-2 pb-6 text-rail-ink hover:text-rail-ink">
           <Wordmark size={24} />
         </Link>
         <RailNav />
         {user === null ? null : (
           <div className="pt-4">
-            <ButtonLink href="/fromages/nouveau" className="w-full">
+            <ButtonLink href="/fromages/nouveau" variant="accent" className="w-full">
               <PlusIcon />
               Ajouter un fromage
             </ButtonLink>
           </div>
         )}
         <div className="grow" />
-        <div className="border-t border-rule px-2 pt-4">
-          <Account user={user} />
+        <div className="border-t border-rail-rule px-2 pt-4">
+          <Account user={user} onRail />
         </div>
       </aside>
 

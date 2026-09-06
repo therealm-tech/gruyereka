@@ -24,6 +24,13 @@
   --color-link: #a8500f;
   --color-pine: #0f6f5c;
 
+  /* The rail is dark so the paste tints are the only colour in the content
+     area; on it, ink text would vanish and the action turns amber. */
+  --color-rail: #2b2118;
+  --color-rail-ink: #faf6ee;
+  --color-rail-mute: #b9a88c;
+  --color-rail-rule: #43362a;
+
   --color-refusal: #a8342a;
   --color-refusal-ink: #7c2419;
   --color-refusal-bg: #fbede9;

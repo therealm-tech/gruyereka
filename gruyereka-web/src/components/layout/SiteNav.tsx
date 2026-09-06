@@ -34,7 +34,7 @@ export function RailNav() {
             href={href}
             aria-current={active ? "page" : undefined}
             className={`flex h-[42px] items-center gap-3 rounded-card px-3 text-[15px] hover:text-current ${
-              active ? "bg-paper-2 font-semibold text-ink" : "text-ink-2"
+              active ? "bg-orange font-semibold text-ink" : "text-rail-mute"
             }`}
           >
             <Icon size={20} />

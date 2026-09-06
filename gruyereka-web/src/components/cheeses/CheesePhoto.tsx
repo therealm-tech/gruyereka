@@ -1,5 +1,6 @@
 import { CheeseMark } from "@/components/brand/CheeseMark";
 import type { Cheese } from "@/lib/api/schemas";
+import { pasteTints } from "@/lib/tints";
 
 /**
  * A fiche without a photo is the normal case, not a defect: the cheese symbol
@@ -10,7 +11,7 @@ export function CheesePhoto({
   height,
   markSize,
 }: {
-  cheese: Pick<Cheese, "id" | "name" | "photoUrl">;
+  cheese: Pick<Cheese, "id" | "name" | "photoUrl" | "pasteType">;
   height: number;
   markSize: number;
 }) {
@@ -25,10 +26,12 @@ export function CheesePhoto({
       />
     );
   }
+  // No photo is the ordinary case, and the slot says which cheese it is anyway:
+  // the ground is the colour of the paste.
   return (
     <div
-      className="flex w-full items-center justify-center border-b border-rule bg-paper-2"
-      style={{ height }}
+      className="flex w-full items-center justify-center border-b border-rule"
+      style={{ height, backgroundColor: pasteTints[cheese.pasteType].ground }}
     >
       <CheeseMark size={markSize} />
     </div>

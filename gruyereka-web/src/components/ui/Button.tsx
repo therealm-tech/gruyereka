@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 
-type Variant = "primary" | "ghost";
+type Variant = "primary" | "ghost" | "accent";
 
 const STYLES: Record<Variant, string> = {
   primary: "bg-ink text-paper",
   ghost: "border border-ink text-ink",
+  // For a dark ground: on the rail, ink on ink reads as nothing.
+  accent: "bg-orange text-ink",
 };
 
 const SHAPE =
