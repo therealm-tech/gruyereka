@@ -23,6 +23,10 @@
   --color-amber: #fec43e;
   --color-cream: #fdefcc;
   --color-link: #a8500f;
+  /* Hovering a link darkens it. The obvious move — brightening to `orange` —
+     drops it to 2.4:1 on paper, so the affordance made the text harder to read
+     than before it was pointed at. */
+  --color-link-hover: #8f430c;
   --color-pine: #0f6f5c;
 
   /* The rail is dark so the paste tints are the only colour in the content
@@ -56,8 +60,14 @@
     text-decoration: none;
   }
 
+  /* Prose links only, in practice: any anchor that sets its own `text-*` wins
+     over this, because Tailwind orders the utilities layer after the base one.
+     So a card, a nav item or a button needs no counter-rule here — and never
+     `hover:text-current`, which sets `color: currentColor`, meaning "inherit
+     the parent", not "keep mine". On the dark rail that resolves to the body's
+     near-black ink and the item disappears. */
   a:hover {
-    color: var(--color-orange);
+    color: var(--color-link-hover);
   }
 
   /* Every focusable thing keeps a visible ring: the palette is low-contrast

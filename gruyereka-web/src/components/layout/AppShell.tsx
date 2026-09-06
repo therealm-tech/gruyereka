@@ -30,7 +30,10 @@ function Account({ user, onRail = false }: { user: User | null; onRail?: boolean
   // The whole block is the way to the account, sign-out included; a rail with
   // its own log-out button would spend a permanent slot on a yearly gesture.
   return (
-    <Link href="/profil" className="flex items-center gap-2.5 text-ink hover:text-current">
+    <Link
+      href="/profil"
+      className={`flex items-center gap-2.5 ${onRail ? "text-rail-ink" : "text-ink"}`}
+    >
       <span
         aria-hidden="true"
         className={`flex size-8 shrink-0 items-center justify-center rounded-full font-mono text-[11px] ${
@@ -59,7 +62,7 @@ export function AppShell({ user, children }: { user: User | null; children: Reac
   return (
     <div className="flex min-h-dvh">
       <aside className="hidden w-60 shrink-0 flex-col bg-rail px-4 pt-6 pb-5 md:flex">
-        <Link href="/fromages" className="px-2 pb-6 text-rail-ink hover:text-rail-ink">
+        <Link href="/fromages" className="px-2 pb-6 text-rail-ink">
           <Wordmark size={24} />
         </Link>
         <RailNav />
@@ -79,7 +82,7 @@ export function AppShell({ user, children }: { user: User | null; children: Reac
 
       <div className="flex min-w-0 grow flex-col">
         <header className="flex items-center justify-between border-b border-rule px-5 py-3.5 md:hidden">
-          <Link href="/fromages" className="text-ink hover:text-ink">
+          <Link href="/fromages" className="text-ink">
             <Wordmark size={22} />
           </Link>
           <Account user={user} />

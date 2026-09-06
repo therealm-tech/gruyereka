@@ -17,7 +17,7 @@ export default async function SignInPage() {
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
       <aside className="flex shrink-0 flex-col justify-between gap-10 bg-ink px-6 py-8 text-paper md:w-[600px] md:px-14 md:py-11">
-        <Link href="/fromages" className="text-paper hover:text-paper">
+        <Link href="/fromages" className="text-paper">
           <Wordmark size={26} />
         </Link>
         <div className="flex flex-col gap-6 md:gap-8">

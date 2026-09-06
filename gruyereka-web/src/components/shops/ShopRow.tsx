@@ -16,7 +16,7 @@ export function ShopRow({ shop }: { shop: Shop }) {
   return (
     <Link
       href={{ pathname: `/boutiques/${shop.id}` }}
-      className="flex flex-col gap-2 border-b border-rule py-4 text-ink hover:text-ink md:flex-row md:items-center md:justify-between md:gap-6"
+      className="flex flex-col gap-2 border-b border-rule py-4 text-ink md:flex-row md:items-center md:justify-between md:gap-6"
     >
       <div className="flex min-w-0 items-start gap-2.5">
         <PinIcon className="mt-0.5 shrink-0 text-pine" size={16} />

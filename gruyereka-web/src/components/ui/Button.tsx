@@ -38,10 +38,7 @@ export function ButtonLink({
   children: ReactNode;
 }) {
   return (
-    <Link
-      href={href}
-      className={`${SHAPE} ${STYLES[variant]} ${className ?? ""} hover:text-current`}
-    >
+    <Link href={href} className={`${SHAPE} ${STYLES[variant]} ${className ?? ""}`}>
       {children}
     </Link>
   );

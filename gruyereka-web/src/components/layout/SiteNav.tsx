@@ -37,8 +37,8 @@ export function RailNav() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`flex h-[42px] items-center gap-3 rounded-card px-3 text-[15px] hover:text-current ${
-              active ? "bg-orange font-semibold text-ink" : "text-rail-mute"
+            className={`flex h-[42px] items-center gap-3 rounded-card px-3 text-[15px] ${
+              active ? "bg-orange font-semibold text-ink" : "text-rail-mute hover:text-rail-ink"
             }`}
           >
             <Icon size={20} />
@@ -64,8 +64,8 @@ export function BottomNav() {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`flex min-h-11 grow flex-col items-center justify-center gap-1 hover:text-current ${
-              active ? "font-semibold text-ink" : "text-mute"
+            className={`flex min-h-11 grow flex-col items-center justify-center gap-1 ${
+              active ? "font-semibold text-ink" : "text-mute hover:text-ink"
             }`}
           >
             <Icon size={22} />

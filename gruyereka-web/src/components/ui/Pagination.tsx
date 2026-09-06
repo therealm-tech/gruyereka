@@ -37,7 +37,7 @@ export function Pagination({
     <Link
       href={href(target)}
       rel={rel}
-      className="flex h-9 items-center rounded-card border border-ink px-3.5 text-[13px] font-semibold text-ink hover:text-ink"
+      className="flex h-9 items-center rounded-card border border-ink px-3.5 text-[13px] font-semibold text-ink"
     >
       {label}
     </Link>

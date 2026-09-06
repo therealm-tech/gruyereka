@@ -17,7 +17,7 @@ export function CheeseCard({ cheese }: { cheese: Cheese }) {
   return (
     <Link
       href={{ pathname: `/fromages/${cheese.id}` }}
-      className="flex flex-col overflow-hidden rounded-card border border-rule bg-white text-ink hover:border-rule-strong hover:text-ink"
+      className="flex flex-col overflow-hidden rounded-card border border-rule bg-white text-ink hover:border-rule-strong"
     >
       <div className="h-[3px] w-full" style={{ backgroundColor: tint.ink }} />
       <CheesePhoto cheese={cheese} height={140} markSize={60} />
