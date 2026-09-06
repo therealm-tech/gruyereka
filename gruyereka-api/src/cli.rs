@@ -41,7 +41,11 @@ pub struct Cli {
     pub super_admin_user: String,
 
     /// Address the administrator account signs in with
-    #[arg(long, env = "SUPER_ADMIN_EMAIL", default_value = "admin@gruyereka")]
+    #[arg(
+        long,
+        env = "SUPER_ADMIN_EMAIL",
+        default_value = "admin@gruyereka.local"
+    )]
     pub super_admin_email: String,
 
     /// Password of the administrator account, reapplied at every startup
