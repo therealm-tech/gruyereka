@@ -263,6 +263,42 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn walks_the_pages_of_a_listing(pool: PgPool) {
+        let router = router(pool);
+        let token = register(&router, "camille@example.org").await;
+        for name in ["Comté", "Beaufort", "Morbier"] {
+            let created = call(
+                &router,
+                json_request(
+                    "POST",
+                    "/api/v1/cheeses",
+                    Some(&token),
+                    &json!({"name": name, "milkTypes": ["COW"], "pasteType": "PRESSED_COOKED"}),
+                ),
+            )
+            .await;
+            assert_eq!(created.status, StatusCode::CREATED);
+        }
+
+        let first = call(&router, get_request("/api/v1/cheeses?page=1&perPage=2")).await;
+        let second = call(&router, get_request("/api/v1/cheeses?page=2&perPage=2")).await;
+        let refused = call(&router, get_request("/api/v1/cheeses?perPage=101")).await;
+
+        assert_eq!(first.status, StatusCode::OK);
+        assert_eq!(first.body["total"], 3);
+        assert_eq!(first.body["perPage"], 2);
+        assert_eq!(first.body["items"].as_array().unwrap().len(), 2);
+        assert_eq!(second.status, StatusCode::OK);
+        assert_eq!(second.body["page"], 2);
+        assert_eq!(second.body["items"].as_array().unwrap().len(), 1);
+        assert_eq!(
+            refused.status,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "a page size above the ceiling is rejected, not clamped"
+        );
+    }
+
+    #[sqlx::test]
     async fn refuses_an_unauthenticated_write(pool: PgPool) {
         let router = router(pool);
 
