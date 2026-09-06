@@ -1,3 +1,5 @@
+CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
+
 CREATE TYPE milk_type AS ENUM ('cow', 'goat', 'sheep', 'buffalo');
 
 CREATE TYPE paste_type AS ENUM (
@@ -48,11 +50,15 @@ CREATE TABLE users (
     email text NOT NULL,
     display_name text NOT NULL,
     password_hash text NOT NULL,
+    -- Defaulted rather than named by the insert, which is what keeps
+    -- registration unable to grant itself anything.
+    role user_role NOT NULL DEFAULT 'user',
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE UNIQUE INDEX users_email_key ON users (lower(email));
+CREATE INDEX users_role_idx ON users (role);
 
 CREATE TABLE cheeses (
     id uuid PRIMARY KEY,

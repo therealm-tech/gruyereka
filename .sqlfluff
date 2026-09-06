@@ -15,6 +15,6 @@ extended_capitalisation_policy = lower
 extended_capitalisation_policy = lower
 
 [sqlfluff:rules:references.keywords]
-# `name` and `comment` are non-reserved in PostgreSQL and are what these columns
-# are actually called; prefixing them to dodge the rule would read worse.
-ignore_words = name,comment
+# `name`, `comment` and `role` are non-reserved in PostgreSQL and are what these
+# columns are actually called; prefixing them to dodge the rule would read worse.
+ignore_words = name,comment,role
