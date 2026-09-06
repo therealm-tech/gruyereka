@@ -23,7 +23,7 @@ export function CheeseCard({ cheese }: { cheese: Cheese }) {
       <CheesePhoto cheese={cheese} height={140} markSize={60} />
       <div className="flex flex-col gap-[7px] p-3.5">
         <div className="flex min-h-11 items-start justify-between gap-2.5">
-          <span className="font-serif text-xl leading-tight">{cheese.name}</span>
+          <span className="display-serif text-xl leading-tight">{cheese.name}</span>
           {cheese.designation === null ? null : (
             <DesignationBadge>{cheese.designation}</DesignationBadge>
           )}

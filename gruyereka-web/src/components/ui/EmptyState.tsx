@@ -15,7 +15,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center gap-3 px-5 py-14 text-center">
       <CheeseMark size={58} className={faded ? "opacity-35" : "opacity-55"} />
-      <h2 className="font-serif text-2xl leading-tight">{title}</h2>
+      <h2 className="display-serif text-2xl leading-tight">{title}</h2>
       {children ? (
         <p className="max-w-sm text-[13px] leading-relaxed text-ink-2 text-pretty">{children}</p>
       ) : null}

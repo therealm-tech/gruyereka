@@ -131,7 +131,7 @@ export default async function CheesesPage({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <h1 className="font-serif text-4xl leading-none">Fromages</h1>
+        <h1 className="display-serif text-4xl leading-none">Fromages</h1>
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
           <SearchForm search={search} />
           {signedIn ? (

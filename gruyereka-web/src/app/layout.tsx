@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Instrument_Serif, Public_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Newsreader, Public_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 
-const serif = Instrument_Serif({
-  weight: "400",
-  style: ["normal", "italic"],
+// `opsz` is the reason this face is here: the same file thins its stems for a
+// 48px title and thickens them for a 20px card name, on its own.
+const serif = Newsreader({
+  axes: ["opsz"],
   subsets: ["latin"],
-  variable: "--font-instrument-serif",
+  variable: "--font-newsreader",
   display: "swap",
 });
 

@@ -73,7 +73,7 @@ export function AuthForm() {
 
   return (
     <div className="flex w-full max-w-[420px] flex-col gap-5">
-      <h1 className="font-serif text-4xl leading-none">
+      <h1 className="display-serif text-4xl leading-none">
         {mode === "signIn" ? "Content de vous revoir" : "Créer un compte"}
       </h1>
 

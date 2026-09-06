@@ -1,9 +1,10 @@
 @import "tailwindcss";
 
 /*
- * The design tokens: an étal de fromager — cream paper, thin rules, a serif with
- * some grain. Two accents at equal chroma and lightness, orange for cheeses and
- * pine for shops, so the two rating scales never blur into one another.
+ * The design tokens: an étal de fromager — cream paper, thin rules, a low
+ * contrast serif that holds at a card's size. Two accents at equal chroma and
+ * lightness, orange for cheeses and pine for shops, so the two rating scales
+ * never blur into one another.
  */
 @theme {
   --color-paper: #faf6ee;
@@ -35,7 +36,7 @@
   --color-refusal-ink: #7c2419;
   --color-refusal-bg: #fbede9;
 
-  --font-serif: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-public-sans), system-ui, "Helvetica Neue", sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, Menlo, monospace;
 
@@ -73,4 +74,14 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-mute);
+}
+
+/* Everything the serif is used for is a title of some kind, and they all want
+   the same weight and fit — only the size differs, which stays at the call
+   site. 560 is the one weight that works on both grounds: the regular reads as
+   body text next to the sans, and semibold blooms in cream on the dark panel. */
+@utility display-serif {
+  font-family: var(--font-serif);
+  font-weight: 560;
+  letter-spacing: -0.01em;
 }

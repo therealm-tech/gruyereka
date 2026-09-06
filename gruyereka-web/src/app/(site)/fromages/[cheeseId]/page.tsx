@@ -176,7 +176,7 @@ export default async function CheesePage({
                 <SoftBadge>{cheese.agingMonths} mois d’affinage</SoftBadge>
               )}
             </div>
-            <h1 className="font-serif text-5xl leading-none">{cheese.name}</h1>
+            <h1 className="display-serif text-5xl leading-none">{cheese.name}</h1>
             <p className="text-[15px] text-ink-2">
               {cheese.milkTypes
                 .map((milk) => `Lait de ${milkLabels[milk].toLowerCase()}`)
@@ -213,7 +213,7 @@ export default async function CheesePage({
         </div>
 
         <section className="flex min-w-0 grow flex-col">
-          <h2 className="pb-3 font-serif text-3xl">Les dégustations</h2>
+          <h2 className="pb-3 display-serif text-3xl">Les dégustations</h2>
           {tastings.items.length === 0 ? (
             <p className="border-t border-rule py-6 text-sm text-ink-2 text-pretty">
               Personne ne l’a encore goûté. La première dégustation ouvrira aussi son historique de

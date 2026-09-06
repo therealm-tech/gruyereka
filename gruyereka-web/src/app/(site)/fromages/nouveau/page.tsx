@@ -20,7 +20,7 @@ export default async function NewCheesePage() {
         <ChevronRightIcon className="text-mute-2" size={13} />
         <span className="font-mono text-mute">Nouvelle fiche</span>
       </nav>
-      <h1 className="font-serif text-4xl leading-none">Ajouter un fromage</h1>
+      <h1 className="display-serif text-4xl leading-none">Ajouter un fromage</h1>
       <NewCheeseForm />
     </div>
   );

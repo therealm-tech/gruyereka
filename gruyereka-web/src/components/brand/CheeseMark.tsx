@@ -19,7 +19,7 @@ export function Wordmark({ size = 24, className }: { size?: number; className?: 
     <span className={`flex items-center gap-2 ${className ?? ""}`}>
       {/* biome-ignore lint/performance/noImgElement: a fixed-size SVG mark; next/image would only add a proxy hop. */}
       <img src="/brand/logo.svg" alt="" width={size} height={size} aria-hidden="true" />
-      <span className="font-serif leading-none" style={{ fontSize: size + 3 }}>
+      <span className="display-serif leading-none" style={{ fontSize: size + 3 }}>
         gruyereka
       </span>
     </span>

@@ -22,7 +22,7 @@ export default async function SignInPage() {
         </Link>
         <div className="flex flex-col gap-6 md:gap-8">
           <CheeseMark size={132} className="hidden md:block" />
-          <p className="font-serif text-3xl leading-tight text-pretty md:text-5xl">
+          <p className="display-serif text-3xl leading-tight text-pretty md:text-5xl">
             Le carnet de vos fromages, et de ceux qui les vendent.
           </p>
           <p className="max-w-md text-base leading-relaxed text-mute-2 text-pretty md:text-[17px]">
