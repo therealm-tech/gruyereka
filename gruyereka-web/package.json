@@ -24,7 +24,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "next": "^15.5.4",
+    "next": "^16.4.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "server-only": "^0.0.1",
@@ -49,10 +49,5 @@
   },
   "allowScripts": {
     "esbuild@0.28.2": true
-  },
-  "overrides": {
-    "next": {
-      "postcss": "^8.5.18"
-    }
   }
 }
