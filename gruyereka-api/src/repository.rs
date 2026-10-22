@@ -14,6 +14,8 @@ pub enum RepositoryError {
     NotFound,
     #[error("resource already exists")]
     Conflict,
+    #[error("resource is full")]
+    LimitReached,
     #[error("referenced resource does not exist")]
     ForeignKeyViolation,
     #[error(transparent)]

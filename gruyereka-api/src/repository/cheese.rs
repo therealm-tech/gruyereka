@@ -15,7 +15,6 @@ struct CheeseRow {
     paste_type: PasteType,
     designation: Option<ProtectedDesignation>,
     aging_months: Option<i32>,
-    photo_key: Option<String>,
     created_by: Uuid,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
@@ -30,7 +29,6 @@ impl From<CheeseRow> for Cheese {
             paste_type: row.paste_type,
             designation: row.designation,
             aging_months: row.aging_months,
-            photo_key: row.photo_key,
             created_by: row.created_by,
             created_at: row.created_at,
             updated_at: row.updated_at,
@@ -74,7 +72,7 @@ impl CheeseRepository {
                   aging_months, created_by)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
              RETURNING id, name, milk_types, paste_type, designation, aging_months,
-                    photo_key, created_by, created_at, updated_at",
+                    created_by, created_at, updated_at",
         )
         .bind(id)
         .bind(&cheese.name)
@@ -90,22 +88,10 @@ impl CheeseRepository {
         Ok(row.into())
     }
 
-    pub async fn find(&self, id: Uuid) -> Result<Option<Cheese>> {
-        let row = sqlx::query_as::<_, CheeseRow>(
-            "SELECT id, name, milk_types, paste_type, designation, aging_months,
-                    photo_key, created_by, created_at, updated_at FROM cheeses WHERE id = $1",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(classify)?;
-        Ok(row.map(Into::into))
-    }
-
     pub async fn summary(&self, id: Uuid) -> Result<Option<CheeseSummary>> {
         let row = sqlx::query_as::<_, CheeseSummaryRow>(
             "SELECT id, name, milk_types, paste_type, designation, aging_months,
-                    photo_key, created_by, created_at, updated_at,
+                    created_by, created_at, updated_at,
                     (SELECT count(*) FROM tasting_items i WHERE i.cheese_id = c.id)
                         AS tasting_count,
                     (SELECT avg(rating_score(i.rating))::double precision
@@ -135,7 +121,7 @@ impl CheeseRepository {
 
         let rows = sqlx::query_as::<_, CheeseSummaryRow>(
             "SELECT id, name, milk_types, paste_type, designation, aging_months,
-                    photo_key, created_by, created_at, updated_at,
+                    created_by, created_at, updated_at,
                     (SELECT count(*) FROM tasting_items i WHERE i.cheese_id = c.id)
                         AS tasting_count,
                     (SELECT avg(rating_score(i.rating))::double precision
@@ -157,21 +143,6 @@ impl CheeseRepository {
             items: rows.into_iter().map(Into::into).collect(),
             total,
         })
-    }
-
-    pub async fn set_photo_key(&self, id: Uuid, photo_key: &str) -> Result<Cheese> {
-        let row = sqlx::query_as::<_, CheeseRow>(
-            "UPDATE cheeses SET photo_key = $2, updated_at = now()
-             WHERE id = $1
-             RETURNING id, name, milk_types, paste_type, designation, aging_months,
-                    photo_key, created_by, created_at, updated_at",
-        )
-        .bind(id)
-        .bind(photo_key)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(classify)?;
-        row.map(Into::into).ok_or(super::RepositoryError::NotFound)
     }
 }
 

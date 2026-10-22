@@ -4,6 +4,7 @@ import { PinIcon, WedgeIcon } from "@/components/ui/Icon";
 import { RatingHoles } from "@/components/ui/RatingHoles";
 import type { Cheese, Tasting, TastingItem } from "@/lib/api/schemas";
 import { formatDay, formatPricePerKg } from "@/lib/format";
+import { photoPath } from "@/lib/photos";
 import { ratingLabels, ratingScores } from "@/lib/vocabulary";
 
 /** Something a row points at. `null` is a fiche deleted since, which still reads. */
@@ -68,6 +69,32 @@ function Header({
   );
 }
 
+/** The visit's photos, small; each opens full size on its own. */
+function Photos({ tasting }: { tasting: Tasting }) {
+  if (tasting.photos.length === 0) return null;
+  const day = formatDay(tasting.tastedOn);
+  return (
+    <ul className="flex flex-wrap gap-2" aria-label="Photos de la visite">
+      {tasting.photos.map((photo, index) => {
+        const path = photoPath(tasting.id, photo.id);
+        return (
+          <li key={photo.id}>
+            <a href={path} target="_blank" rel="noopener" className="block">
+              {/* biome-ignore lint/performance/noImgElement: the bucket serves these bytes behind a short-lived redirect. */}
+              <img
+                src={path}
+                alt={`Visite du ${day}, vue ${index + 1} sur ${tasting.photos.length}`}
+                loading="lazy"
+                className="size-16 rounded-card border border-rule object-cover hover:border-rule-strong"
+              />
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function Scored({ item, name }: { item: TastingItem; name: string | null }) {
   return (
     <div className="flex flex-col gap-1 border-l-2 border-rule pl-3">
@@ -123,6 +150,7 @@ export function TastingRow({
           <Scored key={item.id} item={item} name={cheeses.get(item.cheeseId)?.name ?? null} />
         ))}
       </div>
+      <Photos tasting={tasting} />
     </article>
   );
 }
@@ -172,6 +200,7 @@ export function CheeseTastingRow({
           {alongside > 1 ? "s" : ""} ce jour-là.
         </p>
       ) : null}
+      <Photos tasting={tasting} />
     </article>
   );
 }

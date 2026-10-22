@@ -76,7 +76,7 @@ environment variable; `gruyereka-api --help` is the full list.
 | --- | --- | --- | --- |
 | `DATABASE_URL` | yes | — | PostgreSQL connection string |
 | `JWT_SECRET` | yes | — | HMAC key the access tokens are signed with |
-| `S3_BUCKET` | yes | — | Bucket the cheese photos are stored in |
+| `S3_BUCKET` | yes | — | Bucket the tasting photos are stored in |
 | `SUPER_ADMIN_PASSWORD` | yes | — | Password of the administrator account |
 | `SUPER_ADMIN_USER` | no | `admin` | Display name of the administrator account |
 | `SUPER_ADMIN_EMAIL` | no | `admin@gruyereka.local` | Address the administrator signs in with |

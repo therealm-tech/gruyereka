@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CheesePhoto } from "@/components/cheeses/CheesePhoto";
+import { CheeseVisual } from "@/components/cheeses/CheeseVisual";
 import { CheeseTastingRow, type TastingSubject } from "@/components/tastings/TastingRow";
 import { DesignationBadge, SoftBadge } from "@/components/ui/Badge";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ButtonLink } from "@/components/ui/Button";
 import { PlusIcon } from "@/components/ui/Icon";
-import { Notice } from "@/components/ui/Notice";
 import { RatingHoles } from "@/components/ui/RatingHoles";
 import { getCheese } from "@/lib/api/cheeses";
 import { ApiError } from "@/lib/api/errors";
@@ -120,15 +119,8 @@ function structuredData(cheese: Cheese, shops: number): string {
   return JSON.stringify(payload).replaceAll("<", "\\u003c");
 }
 
-export default async function CheesePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ cheeseId: string }>;
-  searchParams: Promise<{ photo?: string }>;
-}) {
+export default async function CheesePage({ params }: { params: Promise<{ cheeseId: string }> }) {
   const { cheeseId } = await params;
-  const { photo } = await searchParams;
   const [cheese, tastings, viewer] = await Promise.all([
     loadCheese(cheeseId),
     listTastings({ cheeseId, perPage: TASTINGS_SHOWN }),
@@ -159,18 +151,12 @@ export default async function CheesePage({
         dangerouslySetInnerHTML={{ __html: structuredData(cheese, shops.size) }}
       />
 
-      {photo === "echec" ? (
-        <Notice tone="caution" title="La photo n’a pas été envoyée">
-          Le fromage est bien créé, mais son image n’a pas pu être déposée. Réessayez plus tard.
-        </Notice>
-      ) : null}
-
       <Breadcrumb trail={[{ href: "/fromages", label: "Fromages" }]} current={cheese.name} />
 
       <div className="flex flex-col gap-8 lg:flex-row lg:gap-10">
         <div className="flex w-full shrink-0 flex-col gap-4.5 lg:w-[400px]">
           <div className="overflow-hidden rounded-card border border-rule">
-            <CheesePhoto cheese={cheese} height={260} markSize={96} />
+            <CheeseVisual pasteType={cheese.pasteType} height={260} markSize={96} />
           </div>
 
           <div className="flex flex-col gap-3">

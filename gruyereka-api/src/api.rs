@@ -6,6 +6,7 @@ pub mod pagination;
 pub mod shop_reviews;
 pub mod shops;
 pub mod state;
+pub mod tasting_photos;
 pub mod tastings;
 pub mod users;
 
@@ -35,7 +36,8 @@ pub fn build(state: AppState, allowed_origins: &[String]) -> Result<Router, Buil
         .merge(cheeses::routes())
         .merge(shops::routes())
         .merge(shop_reviews::routes())
-        .merge(tastings::routes());
+        .merge(tastings::routes())
+        .merge(tasting_photos::routes());
 
     let mut api = OpenApi::default();
     let router = ApiRouter::new()
@@ -123,7 +125,10 @@ fn describe(api: TransformOpenApi) -> TransformOpenApi {
         })
         .tag(Tag {
             name: "Tastings".to_owned(),
-            description: Some("Dated records of tasting one cheese bought at one shop.".to_owned()),
+            description: Some(
+                "Visits to one shop on one day: the cheeses tasted and the photos taken."
+                    .to_owned(),
+            ),
             ..Tag::default()
         })
         .tag(Tag {
@@ -236,7 +241,10 @@ mod tests {
         assert_eq!(refreshed.status, StatusCode::OK);
         assert_eq!(refreshed.body["tastingCount"], 1);
         assert_eq!(refreshed.body["averageScore"], 5.0);
-        assert!(refreshed.body["photoUrl"].is_null());
+        assert!(
+            refreshed.body.get("photoUrl").is_none(),
+            "photos belong to tastings, not to cheeses"
+        );
     }
 
     #[sqlx::test]
@@ -509,7 +517,7 @@ mod role_tests {
     use crate::domain::user::UserRole;
     use crate::test_support::{call, json_request, promote, router};
 
-    async fn account(router: &axum::Router, email: &str) -> (Uuid, String) {
+    pub(super) async fn account(router: &axum::Router, email: &str) -> (Uuid, String) {
         let response = call(
             router,
             json_request(
@@ -532,7 +540,7 @@ mod role_tests {
         )
     }
 
-    async fn a_tasting(router: &axum::Router, token: &str, osm_id: i64) -> String {
+    pub(super) async fn a_tasting(router: &axum::Router, token: &str, osm_id: i64) -> String {
         let cheese = call(
             router,
             json_request(
@@ -706,5 +714,239 @@ mod role_tests {
         .await;
 
         assert_eq!(response.status, StatusCode::UNAUTHORIZED);
+    }
+}
+
+#[cfg(test)]
+mod photo_tests {
+    use axum::http::StatusCode;
+    use axum::http::header::LOCATION;
+    use serde_json::Value;
+    use sqlx::PgPool;
+
+    use super::role_tests::{a_tasting, account};
+    use crate::domain::user::UserRole;
+    use crate::test_support::{
+        call, file_request, get_request, json_request, promote, router_with_storage,
+    };
+
+    const JPEG: &[u8] = b"\xff\xd8\xff\xe0 not really a jpeg";
+
+    fn photos_of(tasting: &str) -> String {
+        format!("/api/v1/tastings/{tasting}/photos")
+    }
+
+    #[sqlx::test]
+    async fn walks_a_photo_from_upload_to_deletion(pool: PgPool) {
+        let (router, storage) = router_with_storage(pool);
+        let (_, token) = account(&router, "camille@example.org").await;
+        let tasting = a_tasting(&router, &token, 21).await;
+
+        let uploaded = call(
+            &router,
+            file_request(&photos_of(&tasting), Some(&token), "image/jpeg", JPEG),
+        )
+        .await;
+        assert_eq!(uploaded.status, StatusCode::CREATED);
+        let photo = uploaded.body["id"].as_str().unwrap().to_owned();
+        let url = format!("/api/v1/tastings/{tasting}/photos/{photo}");
+        assert_eq!(uploaded.body["url"], url.as_str());
+        assert_eq!(uploaded.headers[LOCATION], url.as_str());
+
+        let shown = call(&router, get_request(&format!("/api/v1/tastings/{tasting}"))).await;
+        assert_eq!(shown.body["photos"][0]["id"], photo.as_str());
+        assert_eq!(shown.body["photos"][0]["url"], url.as_str());
+        let listed = call(&router, get_request("/api/v1/tastings")).await;
+        assert_eq!(listed.body["items"][0]["photos"][0]["url"], url.as_str());
+
+        let redirected = call(&router, get_request(&url)).await;
+        assert_eq!(redirected.status, StatusCode::TEMPORARY_REDIRECT);
+        let target = redirected.headers[LOCATION].to_str().unwrap();
+        assert!(
+            target.contains(&format!("tastings/{tasting}/{photo}")) && target.contains("X-Amz-"),
+            "a pre-signed URL to the object, got {target}"
+        );
+
+        let deleted = call(
+            &router,
+            json_request("DELETE", &url, Some(&token), &Value::Null),
+        )
+        .await;
+        assert_eq!(deleted.status, StatusCode::NO_CONTENT);
+        let shown = call(&router, get_request(&format!("/api/v1/tastings/{tasting}"))).await;
+        assert_eq!(shown.body["photos"], serde_json::json!([]));
+        assert_eq!(
+            call(&router, get_request(&url)).await.status,
+            StatusCode::NOT_FOUND
+        );
+
+        let key = format!("tastings/{tasting}/{photo}");
+        assert_eq!(
+            storage.requests(),
+            [format!("PUT {key}"), format!("DELETE {key}")]
+        );
+    }
+
+    #[sqlx::test]
+    async fn keeps_photos_to_the_author_and_the_moderators(pool: PgPool) {
+        let (router, storage) = router_with_storage(pool.clone());
+        let (_, author) = account(&router, "camille@example.org").await;
+        let (stranger_id, stranger) = account(&router, "dominique@example.org").await;
+        let tasting = a_tasting(&router, &author, 22).await;
+        let upload =
+            |token: Option<&str>| file_request(&photos_of(&tasting), token, "image/png", JPEG);
+
+        let anonymous = call(&router, upload(None)).await;
+        let as_user = call(&router, upload(Some(&stranger))).await;
+        let by_author = call(&router, upload(Some(&author))).await;
+        let url = by_author.body["url"].as_str().unwrap().to_owned();
+        let delete_as_user = call(
+            &router,
+            json_request("DELETE", &url, Some(&stranger), &Value::Null),
+        )
+        .await;
+
+        assert_eq!(anonymous.status, StatusCode::UNAUTHORIZED);
+        assert_eq!(anonymous.body["code"], "UNAUTHENTICATED");
+        // Same rule as writing the tasting itself: somebody else's visit reads
+        // as not found rather than forbidden.
+        assert_eq!(as_user.status, StatusCode::NOT_FOUND);
+        assert_eq!(as_user.body["code"], "NOT_FOUND");
+        assert_eq!(delete_as_user.status, StatusCode::NOT_FOUND);
+        assert_eq!(
+            storage.requests().len(),
+            1,
+            "only the author's upload was stored"
+        );
+
+        promote(&pool, stranger_id, UserRole::Moderator).await;
+        let as_moderator = call(&router, upload(Some(&stranger))).await;
+        let delete_as_moderator = call(
+            &router,
+            json_request("DELETE", &url, Some(&stranger), &Value::Null),
+        )
+        .await;
+
+        assert_eq!(as_moderator.status, StatusCode::CREATED);
+        assert_eq!(delete_as_moderator.status, StatusCode::NO_CONTENT);
+    }
+
+    #[sqlx::test]
+    async fn refuses_a_file_that_is_not_a_photo(pool: PgPool) {
+        let (router, storage) = router_with_storage(pool);
+        let (_, token) = account(&router, "camille@example.org").await;
+        let tasting = a_tasting(&router, &token, 23).await;
+
+        let refused = call(
+            &router,
+            file_request(
+                &photos_of(&tasting),
+                Some(&token),
+                "application/pdf",
+                b"%PDF-1.7",
+            ),
+        )
+        .await;
+
+        assert_eq!(refused.status, StatusCode::BAD_REQUEST);
+        assert_eq!(refused.body["code"], "BAD_REQUEST");
+        assert!(storage.requests().is_empty());
+    }
+
+    #[sqlx::test]
+    async fn caps_the_photos_of_one_visit(pool: PgPool) {
+        let (router, storage) = router_with_storage(pool);
+        let (_, token) = account(&router, "camille@example.org").await;
+        let tasting = a_tasting(&router, &token, 24).await;
+        for _ in 0..10 {
+            let added = call(
+                &router,
+                file_request(&photos_of(&tasting), Some(&token), "image/webp", JPEG),
+            )
+            .await;
+            assert_eq!(added.status, StatusCode::CREATED);
+        }
+
+        let eleventh = call(
+            &router,
+            file_request(&photos_of(&tasting), Some(&token), "image/webp", JPEG),
+        )
+        .await;
+
+        assert_eq!(eleventh.status, StatusCode::CONFLICT);
+        assert_eq!(eleventh.body["code"], "LIMIT_REACHED");
+        assert_eq!(
+            storage.requests().len(),
+            10,
+            "the refused photo never reached the store"
+        );
+        let shown = call(&router, get_request(&format!("/api/v1/tastings/{tasting}"))).await;
+        assert_eq!(shown.body["photos"].as_array().unwrap().len(), 10);
+    }
+
+    #[sqlx::test]
+    async fn answers_a_photo_only_under_its_own_tasting(pool: PgPool) {
+        let (router, _) = router_with_storage(pool);
+        let (_, token) = account(&router, "camille@example.org").await;
+        let first = a_tasting(&router, &token, 25).await;
+        let second = a_tasting(&router, &token, 26).await;
+        let uploaded = call(
+            &router,
+            file_request(&photos_of(&first), Some(&token), "image/jpeg", JPEG),
+        )
+        .await;
+        let photo = uploaded.body["id"].as_str().unwrap();
+        let elsewhere = format!("/api/v1/tastings/{second}/photos/{photo}");
+
+        let read = call(&router, get_request(&elsewhere)).await;
+        let deleted = call(
+            &router,
+            json_request("DELETE", &elsewhere, Some(&token), &Value::Null),
+        )
+        .await;
+        let unknown_tasting = call(
+            &router,
+            file_request(
+                &photos_of(&uuid::Uuid::now_v7().to_string()),
+                Some(&token),
+                "image/jpeg",
+                JPEG,
+            ),
+        )
+        .await;
+
+        assert_eq!(read.status, StatusCode::NOT_FOUND);
+        assert_eq!(deleted.status, StatusCode::NOT_FOUND);
+        assert_eq!(unknown_tasting.status, StatusCode::NOT_FOUND);
+    }
+
+    #[sqlx::test]
+    async fn drops_the_objects_along_with_their_tasting(pool: PgPool) {
+        let (router, storage) = router_with_storage(pool);
+        let (_, token) = account(&router, "camille@example.org").await;
+        let tasting = a_tasting(&router, &token, 27).await;
+        let uploaded = call(
+            &router,
+            file_request(&photos_of(&tasting), Some(&token), "image/jpeg", JPEG),
+        )
+        .await;
+        let photo = uploaded.body["id"].as_str().unwrap();
+
+        let deleted = call(
+            &router,
+            json_request(
+                "DELETE",
+                &format!("/api/v1/tastings/{tasting}"),
+                Some(&token),
+                &Value::Null,
+            ),
+        )
+        .await;
+
+        assert_eq!(deleted.status, StatusCode::NO_CONTENT);
+        assert_eq!(
+            storage.requests().last().unwrap(),
+            &format!("DELETE tastings/{tasting}/{photo}")
+        );
     }
 }

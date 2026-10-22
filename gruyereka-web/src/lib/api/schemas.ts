@@ -23,6 +23,8 @@ import {
  */
 export const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+/** The API refuses the eleventh photo of a visit. */
+export const MAX_TASTING_PHOTOS = 10;
 
 export const pricePerKgSchema = z.object({
   amountCents: z.number().int(),
@@ -43,8 +45,6 @@ export const cheeseSchema = z.object({
   pasteType: z.enum(PASTE_TYPES),
   designation: z.enum(PROTECTED_DESIGNATIONS).nullable(),
   agingMonths: z.number().int().nullable(),
-  /** Path on the API; following it with credentials redirects to the bucket. */
-  photoUrl: z.string().nullable(),
   tastingCount: z.number().int(),
   averageScore: z.number().nullable(),
   createdByUserId: z.uuid(),
@@ -67,6 +67,13 @@ export const tastingItemSchema = z.object({
 });
 export type TastingItem = z.infer<typeof tastingItemSchema>;
 
+export const tastingPhotoSchema = z.object({
+  id: z.uuid(),
+  /** Path on the API; following it redirects to a short-lived bucket URL. */
+  url: z.string(),
+});
+export type TastingPhoto = z.infer<typeof tastingPhotoSchema>;
+
 /** One visit: one person, one shop, one day, and everything tasted then. */
 export const tastingSchema = z.object({
   id: z.uuid(),
@@ -76,6 +83,8 @@ export const tastingSchema = z.object({
   // The API refuses an empty basket, and a listing that showed one would be a
   // row saying nothing; a contract that drifted this far should fail loudly.
   items: z.array(tastingItemSchema).min(1),
+  /** Oldest first. */
+  photos: z.array(tastingPhotoSchema).max(MAX_TASTING_PHOTOS),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

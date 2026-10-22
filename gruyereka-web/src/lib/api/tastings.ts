@@ -5,6 +5,8 @@ import {
   type PricePerKg,
   pageSchema,
   type Tasting,
+  type TastingPhoto,
+  tastingPhotoSchema,
   tastingSchema,
 } from "@/lib/api/schemas";
 import type { RatingLevel } from "@/lib/vocabulary";
@@ -86,4 +88,33 @@ export function updateTasting(
 
 export function deleteTasting(tastingId: string, token: string): Promise<void> {
   return apiRequestNoContent({ path: `/tastings/${tastingId}`, method: "DELETE", token });
+}
+
+/** A photo hangs on a visit that already exists, one call per file. */
+export function uploadTastingPhoto(
+  tastingId: string,
+  photo: File,
+  token: string,
+): Promise<TastingPhoto> {
+  const body = new FormData();
+  body.append("photo", photo, photo.name);
+  return apiRequest({
+    path: `/tastings/${tastingId}/photos`,
+    method: "POST",
+    formData: body,
+    token,
+    schema: tastingPhotoSchema,
+  });
+}
+
+export function deleteTastingPhoto(
+  tastingId: string,
+  photoId: string,
+  token: string,
+): Promise<void> {
+  return apiRequestNoContent({
+    path: `/tastings/${tastingId}/photos/${photoId}`,
+    method: "DELETE",
+    token,
+  });
 }

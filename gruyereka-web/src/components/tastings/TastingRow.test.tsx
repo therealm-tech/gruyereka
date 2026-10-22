@@ -18,7 +18,6 @@ function cheese(id: string, name: string): Cheese {
     pasteType: "PRESSED_COOKED",
     designation: null,
     agingMonths: null,
-    photoUrl: null,
     tastingCount: 1,
     averageScore: 4,
     createdByUserId: "0199a1f0-0000-7000-8000-000000000002",
@@ -54,8 +53,16 @@ const VISIT: Tasting = {
   shopId: "0199a1f0-0000-7000-8000-000000000010",
   tastedOn: "2026-08-30",
   items: [COMTE, BRIE],
+  photos: [],
   createdAt: "2026-08-30T10:00:00Z",
   updatedAt: "2026-08-30T10:00:00Z",
+};
+
+const PHOTO_IDS = ["0199a1f0-0000-7000-8000-000000000040", "0199a1f0-0000-7000-8000-000000000041"];
+
+const PHOTOGRAPHED: Tasting = {
+  ...VISIT,
+  photos: PHOTO_IDS.map((id) => ({ id, url: `/api/v1/tastings/${VISIT.id}/photos/${id}` })),
 };
 
 const SHOP: TastingSubject = {
@@ -108,6 +115,36 @@ describe("TastingRow", () => {
       "href",
       `/degustations/${VISIT.id}/modifier`,
     );
+  });
+});
+
+describe("TastingRow photos", () => {
+  it("shows each photo as a lazy thumbnail through this origin's relay", () => {
+    render(<TastingRow tasting={PHOTOGRAPHED} cheeses={CHEESES} subject={SHOP} mine={false} />);
+
+    const thumbnails = screen.getAllByRole("img", { name: /^Visite du 30\.08\.2026/ });
+    expect(thumbnails).toHaveLength(2);
+    expect(thumbnails[0]).toHaveAttribute("src", `/photos/${VISIT.id}/${PHOTO_IDS[0]}`);
+    expect(thumbnails[0]).toHaveAttribute("loading", "lazy");
+    expect(thumbnails[1]).toHaveAccessibleName("Visite du 30.08.2026, vue 2 sur 2");
+  });
+
+  it("opens the full image on its own, in a new tab", () => {
+    render(<TastingRow tasting={PHOTOGRAPHED} cheeses={CHEESES} subject={SHOP} mine={false} />);
+    const link = screen.getByRole("link", { name: /vue 1 sur 2/ });
+    expect(link).toHaveAttribute("href", `/photos/${VISIT.id}/${PHOTO_IDS[0]}`);
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("shows nothing at all for a visit without photos", () => {
+    render(<TastingRow tasting={VISIT} cheeses={CHEESES} subject={SHOP} mine={false} />);
+    expect(screen.queryByRole("list", { name: "Photos de la visite" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /^Visite du/ })).not.toBeInTheDocument();
+  });
+
+  it("shows the visit's photos on a cheese's fiche too", () => {
+    render(<CheeseTastingRow tasting={PHOTOGRAPHED} item={COMTE} shop={SHOP} mine={false} />);
+    expect(screen.getAllByRole("img", { name: /^Visite du/ })).toHaveLength(2);
   });
 });
 

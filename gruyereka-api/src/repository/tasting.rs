@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, NaiveDate, Utc};
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::{PgExecutor, PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::domain::tasting::{
     NewTasting, NewTastingItem, PricePerKg, RatingLevel, Tasting, TastingFilter, TastingItem,
-    TastingUpdate,
+    TastingPhoto, TastingUpdate,
 };
 use crate::repository::{AuthorScope, Page, Paginated, RepositoryError, Result, classify};
 
@@ -47,6 +49,23 @@ impl From<ItemRow> for TastingItem {
     }
 }
 
+#[derive(Debug, sqlx::FromRow)]
+struct PhotoRow {
+    id: Uuid,
+    tasting_id: Uuid,
+    object_key: String,
+}
+
+impl From<PhotoRow> for TastingPhoto {
+    fn from(row: PhotoRow) -> Self {
+        Self {
+            id: row.id,
+            tasting_id: row.tasting_id,
+            object_key: row.object_key,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TastingRepository {
     pool: PgPool,
@@ -75,7 +94,7 @@ impl TastingRepository {
 
         let items = insert_items(&mut transaction, id, &tasting.items).await?;
         transaction.commit().await.map_err(classify)?;
-        Ok(assemble(&row, items))
+        Ok(assemble(&row, items, Vec::new()))
     }
 
     pub async fn find(&self, id: Uuid) -> Result<Option<Tasting>> {
@@ -99,10 +118,15 @@ impl TastingRepository {
         .fetch_all(&self.pool)
         .await
         .map_err(classify)?;
+        let photos = photos_by_tasting(&self.pool, &[id])
+            .await?
+            .remove(&id)
+            .unwrap_or_default();
 
         Ok(Some(assemble(
             &row,
             items.into_iter().map(Into::into).collect(),
+            photos,
         )))
     }
 
@@ -157,8 +181,9 @@ impl TastingRepository {
         .await
         .map_err(classify)?;
 
-        let mut by_tasting: std::collections::HashMap<Uuid, Vec<TastingItem>> =
-            std::collections::HashMap::new();
+        let mut photos = photos_by_tasting(&self.pool, &ids).await?;
+
+        let mut by_tasting: HashMap<Uuid, Vec<TastingItem>> = HashMap::new();
         for item in items {
             by_tasting
                 .entry(item.tasting_id)
@@ -171,7 +196,8 @@ impl TastingRepository {
                 .into_iter()
                 .map(|row| {
                     let items = by_tasting.remove(&row.id).unwrap_or_default();
-                    assemble(&row, items)
+                    let photos = photos.remove(&row.id).unwrap_or_default();
+                    assemble(&row, items, photos)
                 })
                 .collect(),
             total,
@@ -215,33 +241,160 @@ impl TastingRepository {
             .await
             .map_err(classify)?;
         let items = insert_items(&mut transaction, id, &update.items).await?;
+        let photos = photos_by_tasting(&mut *transaction, &[id])
+            .await?
+            .remove(&id)
+            .unwrap_or_default();
         transaction.commit().await.map_err(classify)?;
-        Ok(assemble(&row, items))
+        Ok(assemble(&row, items, photos))
     }
 
-    pub async fn delete(&self, id: Uuid, scope: AuthorScope) -> Result<()> {
+    /// Returns the photos the cascade took with it, whose objects the caller
+    /// still has to remove from the store.
+    pub async fn delete(&self, id: Uuid, scope: AuthorScope) -> Result<Vec<TastingPhoto>> {
+        let mut transaction = self.pool.begin().await.map_err(classify)?;
+        let photos = photos_by_tasting(&mut *transaction, &[id])
+            .await?
+            .remove(&id)
+            .unwrap_or_default();
         let deleted = sqlx::query(
             "DELETE FROM tastings WHERE id = $1 AND ($2::uuid IS NULL OR user_id = $2)",
         )
         .bind(id)
         .bind(scope.author_id())
-        .execute(&self.pool)
+        .execute(&mut *transaction)
         .await
         .map_err(classify)?;
         if deleted.rows_affected() == 0 {
             return Err(RepositoryError::NotFound);
         }
-        Ok(())
+        transaction.commit().await.map_err(classify)?;
+        Ok(photos)
+    }
+
+    /// Fails with `NotFound` when the tasting is not within `scope`, and with
+    /// `LimitReached` when it already holds `max` photos. Meant to be asked
+    /// before the object is stored, so a refused upload costs no storage.
+    pub async fn ensure_photo_room(&self, id: Uuid, scope: AuthorScope, max: i64) -> Result<()> {
+        ensure_photo_room(&self.pool, id, scope, max).await
+    }
+
+    /// Re-checks the room under a lock on the tasting row: two uploads racing
+    /// past `ensure_photo_room` must not take a full tasting over `max`.
+    pub async fn add_photo(
+        &self,
+        photo: &TastingPhoto,
+        scope: AuthorScope,
+        max: i64,
+    ) -> Result<()> {
+        let mut transaction = self.pool.begin().await.map_err(classify)?;
+        ensure_photo_room(&mut *transaction, photo.tasting_id, scope, max).await?;
+        sqlx::query("INSERT INTO tasting_photos (id, tasting_id, object_key) VALUES ($1, $2, $3)")
+            .bind(photo.id)
+            .bind(photo.tasting_id)
+            .bind(&photo.object_key)
+            .execute(&mut *transaction)
+            .await
+            .map_err(classify)?;
+        transaction.commit().await.map_err(classify)
+    }
+
+    pub async fn find_photo(
+        &self,
+        tasting_id: Uuid,
+        photo_id: Uuid,
+    ) -> Result<Option<TastingPhoto>> {
+        let row = sqlx::query_as::<_, PhotoRow>(
+            "SELECT id, tasting_id, object_key FROM tasting_photos
+             WHERE id = $2 AND tasting_id = $1",
+        )
+        .bind(tasting_id)
+        .bind(photo_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(classify)?;
+        Ok(row.map(Into::into))
+    }
+
+    /// Same scope rule as deleting the tasting itself. Returns the removed
+    /// photo so the caller can drop its object.
+    pub async fn delete_photo(
+        &self,
+        tasting_id: Uuid,
+        photo_id: Uuid,
+        scope: AuthorScope,
+    ) -> Result<TastingPhoto> {
+        let row = sqlx::query_as::<_, PhotoRow>(
+            "DELETE FROM tasting_photos p USING tastings t
+             WHERE p.id = $2 AND p.tasting_id = $1 AND t.id = p.tasting_id
+                   AND ($3::uuid IS NULL OR t.user_id = $3)
+             RETURNING p.id, p.tasting_id, p.object_key",
+        )
+        .bind(tasting_id)
+        .bind(photo_id)
+        .bind(scope.author_id())
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(classify)?;
+        row.map(Into::into).ok_or(RepositoryError::NotFound)
     }
 }
 
-fn assemble(row: &TastingRow, items: Vec<TastingItem>) -> Tasting {
+async fn ensure_photo_room(
+    executor: impl PgExecutor<'_>,
+    tasting_id: Uuid,
+    scope: AuthorScope,
+    max: i64,
+) -> Result<()> {
+    let count = sqlx::query_scalar::<_, i64>(
+        "SELECT (SELECT count(*) FROM tasting_photos p WHERE p.tasting_id = t.id)
+         FROM tastings t
+         WHERE t.id = $1 AND ($2::uuid IS NULL OR t.user_id = $2)
+         FOR UPDATE",
+    )
+    .bind(tasting_id)
+    .bind(scope.author_id())
+    .fetch_optional(executor)
+    .await
+    .map_err(classify)?
+    .ok_or(RepositoryError::NotFound)?;
+    if count >= max {
+        return Err(RepositoryError::LimitReached);
+    }
+    Ok(())
+}
+
+/// One query for any number of tastings, oldest photo first in each.
+async fn photos_by_tasting(
+    executor: impl PgExecutor<'_>,
+    ids: &[Uuid],
+) -> Result<HashMap<Uuid, Vec<TastingPhoto>>> {
+    let rows = sqlx::query_as::<_, PhotoRow>(
+        "SELECT id, tasting_id, object_key FROM tasting_photos
+         WHERE tasting_id = ANY($1) ORDER BY tasting_id, id",
+    )
+    .bind(ids)
+    .fetch_all(executor)
+    .await
+    .map_err(classify)?;
+    let mut by_tasting: HashMap<Uuid, Vec<TastingPhoto>> = HashMap::new();
+    for row in rows {
+        by_tasting
+            .entry(row.tasting_id)
+            .or_default()
+            .push(row.into());
+    }
+    Ok(by_tasting)
+}
+
+fn assemble(row: &TastingRow, items: Vec<TastingItem>, photos: Vec<TastingPhoto>) -> Tasting {
     Tasting {
         id: row.id,
         user_id: row.user_id,
         shop_id: row.shop_id,
         tasted_on: row.tasted_on,
         items,
+        photos,
         created_at: row.created_at,
         updated_at: row.updated_at,
     }

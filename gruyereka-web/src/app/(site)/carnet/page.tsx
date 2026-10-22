@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { TastingRow, type TastingSubject } from "@/components/tastings/TastingRow";
 import { ApiFailure } from "@/components/ui/ApiFailure";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PlusIcon } from "@/components/ui/Icon";
+import { Notice } from "@/components/ui/Notice";
 import { Pagination } from "@/components/ui/Pagination";
 import { getCheese } from "@/lib/api/cheeses";
 import { isTransportFailure } from "@/lib/api/errors";
@@ -40,15 +42,28 @@ async function resolve<T>(ids: readonly string[], get: (id: string) => Promise<T
   return found;
 }
 
+/** Written by `addTasting` when the visit landed but some of its photos did not. */
+type PhotoFailure = { tastingId: string; names: string[] };
+
+function readPhotoFailure(
+  tastingId: string | undefined,
+  names: string | string[] | undefined,
+): PhotoFailure | null {
+  if (tastingId === undefined || names === undefined) return null;
+  return { tastingId, names: typeof names === "string" ? [names] : names };
+}
+
 export default async function CarnetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; degustation?: string; echec?: string | string[] }>;
 }) {
   const viewer = await currentUser();
   if (viewer === null) redirect("/connexion");
 
-  const page = readPage((await searchParams).page);
+  const params = await searchParams;
+  const page = readPage(params.page);
+  const photoFailure = readPhotoFailure(params.degustation, params.echec);
 
   let result: ApiPage<Tasting>;
   try {
@@ -75,6 +90,27 @@ export default async function CarnetPage({
 
   return (
     <div className="flex flex-col gap-5">
+      {photoFailure === null ? null : (
+        <Notice
+          tone="caution"
+          title={
+            photoFailure.names.length > 1
+              ? "Des photos n’ont pas été envoyées"
+              : "Une photo n’a pas été envoyée"
+          }
+        >
+          La dégustation est bien notée, mais{" "}
+          {photoFailure.names.length > 1 ? "ces images n’ont" : "cette image n’a"} pas pu être
+          déposée{photoFailure.names.length > 1 ? "s" : ""} : {photoFailure.names.join(", ")}.{" "}
+          <Link
+            href={{ pathname: `/degustations/${photoFailure.tastingId}/modifier` }}
+            className="font-semibold text-link"
+          >
+            Ajoutez-les depuis sa correction.
+          </Link>
+        </Notice>
+      )}
+
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-col gap-1.5">
           <h1 className="display-serif text-4xl leading-none">Carnet</h1>

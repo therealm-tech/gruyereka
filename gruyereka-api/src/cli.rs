@@ -52,7 +52,7 @@ pub struct Cli {
     #[arg(long, env = "SUPER_ADMIN_PASSWORD", hide_env_values = true)]
     pub super_admin_password: Secret,
 
-    /// Bucket the cheese photos are stored in
+    /// Bucket the tasting photos are stored in
     #[arg(long, env = "S3_BUCKET")]
     pub s3_bucket: String,
 

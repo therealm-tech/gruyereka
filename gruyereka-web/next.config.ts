@@ -7,9 +7,10 @@ const config: NextConfig = {
   poweredByHeader: false,
   typedRoutes: true,
   experimental: {
-    // A cheese photo travels through a server action, so the action limit has
-    // to match the ceiling the API enforces on the upload route.
-    serverActions: { bodySizeLimit: "10mb" },
+    // A new tasting carries its photos through one server action: up to ten of
+    // the 10 MiB the API accepts each, plus room for the basket's fields and
+    // the multipart framing.
+    serverActions: { bodySizeLimit: "105mb" },
   },
 };
 

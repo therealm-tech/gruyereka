@@ -41,6 +41,10 @@ pub enum ApiError {
     NotFound(&'static str),
     #[error("{0} already exists")]
     Conflict(&'static str),
+    /// The resource holds as much as it is allowed to. A `409` like `Conflict`,
+    /// with its own code so a client can tell "full" from "duplicate".
+    #[error("{0} is full")]
+    LimitReached(&'static str),
     /// Something the body referenced does not exist. Distinct from `NotFound`,
     /// which is about the resource named in the URL.
     #[error("referenced {0} does not exist")]
@@ -60,6 +64,7 @@ impl ApiError {
             Self::Forbidden(_) => (StatusCode::FORBIDDEN, "FORBIDDEN"),
             Self::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
             Self::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
+            Self::LimitReached(_) => (StatusCode::CONFLICT, "LIMIT_REACHED"),
             Self::UnknownReference(_) => (StatusCode::UNPROCESSABLE_ENTITY, "UNKNOWN_REFERENCE"),
             Self::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, "VALIDATION_FAILED"),
             Self::BadRequest(_) => (StatusCode::BAD_REQUEST, "BAD_REQUEST"),
@@ -156,6 +161,7 @@ pub fn map_repository_error(
     match error {
         RepositoryError::NotFound => ApiError::NotFound(resource),
         RepositoryError::Conflict => ApiError::Conflict(resource),
+        RepositoryError::LimitReached => ApiError::LimitReached(resource),
         RepositoryError::ForeignKeyViolation => ApiError::UnknownReference(reference),
         RepositoryError::Database(error) => error.into(),
     }

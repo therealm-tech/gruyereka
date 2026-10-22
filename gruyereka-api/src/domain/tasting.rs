@@ -49,6 +49,15 @@ pub struct TastingItem {
     pub comment: Option<String>,
 }
 
+/// A picture taken during a visit. The image lives in the object store under
+/// `object_key`; the row only says which visit it belongs to.
+#[derive(Debug, Clone)]
+pub struct TastingPhoto {
+    pub id: Uuid,
+    pub tasting_id: Uuid,
+    pub object_key: String,
+}
+
 /// One visit: one person, one shop, one day, and everything tasted then.
 #[derive(Debug, Clone)]
 pub struct Tasting {
@@ -58,6 +67,8 @@ pub struct Tasting {
     pub tasted_on: NaiveDate,
     /// Never empty — a visit with nothing tasted is not a record of anything.
     pub items: Vec<TastingItem>,
+    /// Oldest first.
+    pub photos: Vec<TastingPhoto>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

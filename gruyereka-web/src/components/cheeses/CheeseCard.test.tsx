@@ -10,7 +10,6 @@ const BASE: Cheese = {
   pasteType: "PRESSED_COOKED",
   designation: "AOP",
   agingMonths: 36,
-  photoUrl: null,
   tastingCount: 12,
   averageScore: 4.6,
   createdByUserId: "0199a1f0-0000-7000-8000-000000000002",
@@ -48,7 +47,7 @@ describe("CheeseCard", () => {
     expect(screen.queryByText("AOP")).not.toBeInTheDocument();
   });
 
-  it("falls back to the cheese symbol when no photo has been uploaded", () => {
+  it("frames the card with the cheese symbol rather than a photo", () => {
     const { container } = render(<CheeseCard cheese={BASE} />);
     const mark = container.querySelector("img");
     expect(mark).toHaveAttribute("src", "/brand/cheese.svg");

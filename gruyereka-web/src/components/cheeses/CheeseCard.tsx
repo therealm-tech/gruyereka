@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheesePhoto } from "@/components/cheeses/CheesePhoto";
+import { CheeseVisual } from "@/components/cheeses/CheeseVisual";
 import { DesignationBadge } from "@/components/ui/Badge";
 import { RatingHoles } from "@/components/ui/RatingHoles";
 import type { Cheese } from "@/lib/api/schemas";
@@ -20,7 +20,7 @@ export function CheeseCard({ cheese }: { cheese: Cheese }) {
       className="flex flex-col overflow-hidden rounded-card border border-rule bg-white text-ink hover:border-rule-strong"
     >
       <div className="h-[3px] w-full" style={{ backgroundColor: tint.ink }} />
-      <CheesePhoto cheese={cheese} height={140} markSize={60} />
+      <CheeseVisual pasteType={cheese.pasteType} height={140} markSize={60} />
       <div className="flex flex-col gap-[7px] p-3.5">
         <div className="flex min-h-11 items-start justify-between gap-2.5">
           <span className="display-serif text-xl leading-tight">{cheese.name}</span>
