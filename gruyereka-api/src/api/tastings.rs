@@ -14,6 +14,7 @@ use crate::api::auth::AuthUser;
 use crate::api::error::{ApiError, Result, map_repository_error};
 use crate::api::pagination::{PageResponse, PaginationQuery};
 use crate::api::state::AppState;
+use crate::api::tasting_photos::{TastingPhotoResponse, discard};
 use crate::domain::tasting::{
     NewTasting, NewTastingItem, PricePerKg, RatingLevel, Tasting, TastingFilter, TastingItem,
     TastingUpdate,
@@ -145,6 +146,8 @@ pub struct TastingResponse {
     /// Never empty, and one entry per cheese: the rating and the price are the
     /// item's, not the visit's.
     pub items: Vec<TastingItemResponse>,
+    /// Oldest first, empty when the visit has none.
+    pub photos: Vec<TastingPhotoResponse>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -157,6 +160,7 @@ impl From<Tasting> for TastingResponse {
             shop_id: tasting.shop_id,
             tasted_on: tasting.tasted_on,
             items: tasting.items.into_iter().map(Into::into).collect(),
+            photos: tasting.photos.into_iter().map(Into::into).collect(),
             created_at: tasting.created_at,
             updated_at: tasting.updated_at,
         }
@@ -302,11 +306,14 @@ async fn remove(
     caller: AuthUser,
     Path(path): Path<TastingPath>,
 ) -> Result<StatusCode> {
-    state
+    let photos = state
         .tastings
         .delete(path.tasting_id, caller.scope())
         .await
         .map_err(|error| map_repository_error(error, "tasting", "tasting"))?;
+    for photo in photos {
+        discard(&state.photos, &photo.object_key).await;
+    }
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -353,7 +360,10 @@ fn remove_docs(operation: TransformOperation) -> TransformOperation {
     operation
         .tag("Tastings")
         .summary("Delete a tasting")
-        .description("Restricted to the tasting's author; a moderator may delete anybody's.")
+        .description(
+            "Restricted to the tasting's author; a moderator may delete anybody's. \
+             The tasting's photos go with it.",
+        )
         .security_requirement("BearerAuth")
         .response::<204, ()>()
 }

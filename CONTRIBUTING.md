@@ -99,9 +99,11 @@ There are two kinds, both under `#[cfg(test)]` next to the code they cover:
   `tower`'s `oneshot`. These carry `#[sqlx::test]` and fail without
   `DATABASE_URL`.
 
-Nothing touches the object storage: the S3 client is constructed in the test
-state but no test exercises the photo routes, so SeaweedFS is not needed to run
-the suite.
+Nothing reaches a real object storage, so SeaweedFS is not needed to run the
+suite. The photo routes run against the real S3 SDK wired to an in-process HTTP
+client from `aws-smithy-http-client`'s test utilities: it answers every call
+with an empty success and records the method and key, which is what the tests
+assert on.
 
 ### The web client
 

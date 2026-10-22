@@ -68,7 +68,6 @@ CREATE TABLE cheeses (
     paste_type paste_type NOT NULL,
     designation protected_designation,
     aging_months integer,
-    photo_key text,
     created_by uuid NOT NULL REFERENCES users (id),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -138,6 +137,18 @@ CREATE TABLE tasting_items (
 
 CREATE INDEX tasting_items_tasting_id_idx ON tasting_items (tasting_id);
 CREATE INDEX tasting_items_cheese_id_idx ON tasting_items (cheese_id);
+
+-- Photos belong to the visit, not to a cheese: one shot of the counter or the
+-- basket shows several cheeses at once. The image itself lives in the object
+-- store under `object_key`; listing order is `id`, a UUIDv7.
+CREATE TABLE tasting_photos (
+    id uuid PRIMARY KEY,
+    tasting_id uuid NOT NULL REFERENCES tastings (id) ON DELETE CASCADE,
+    object_key text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX tasting_photos_tasting_id_idx ON tasting_photos (tasting_id);
 
 CREATE TABLE shop_reviews (
     id uuid PRIMARY KEY,

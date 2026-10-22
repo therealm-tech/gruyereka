@@ -1,6 +1,6 @@
 /**
- * The cheese symbol stands for the entity, not the brand: default thumbnail
- * when a fiche has no photo, list rows, empty states. The pin-wheel stays the
+ * The cheese symbol stands for the entity, not the brand: the frame of a card
+ * and of a fiche, list rows, empty states. The pin-wheel stays the
  * mark of Gruyereka itself.
  *
  * Below about 40px the sparkle and the highlights silt up, so the compact

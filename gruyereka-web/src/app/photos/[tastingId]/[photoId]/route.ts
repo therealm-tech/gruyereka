@@ -1,25 +1,32 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 
+const ids = z.object({ tastingId: z.uuid(), photoId: z.uuid() });
+
 /**
- * Cheese photos are public on the API, but the browser only ever talks to this
+ * Tasting photos are public on the API, but the browser only ever talks to this
  * origin. This relays the 307 the API answers with, so the picture is fetched
  * straight from the bucket over a short-lived URL and no photo bytes pass
  * through either server.
  */
 export async function GET(
   _request: Request,
-  context: { params: Promise<{ cheeseId: string }> },
+  context: { params: Promise<{ tastingId: string; photoId: string }> },
 ): Promise<Response> {
-  const { cheeseId } = await context.params;
-  const target = new URL(`/api/v1/cheeses/${cheeseId}/photo`, env().API_BASE_URL);
+  // The segments are spliced into an API path; a `..` in one would walk the
+  // relay onto another endpoint.
+  const parsed = ids.safeParse(await context.params);
+  if (!parsed.success) return new NextResponse(null, { status: 404 });
+  const { tastingId, photoId } = parsed.data;
+  const target = new URL(`/api/v1/tastings/${tastingId}/photos/${photoId}`, env().API_BASE_URL);
 
   let upstream: Response;
   try {
     upstream = await fetch(target, { redirect: "manual", cache: "no-store" });
   } catch {
-    logger.error("photo.unreachable", { cheeseId });
+    logger.error("photo.unreachable", { tastingId, photoId });
     return new NextResponse(null, { status: 502 });
   }
 

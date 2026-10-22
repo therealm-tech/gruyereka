@@ -36,19 +36,6 @@ export type NewCheese = {
   agingMonths: number | null;
 };
 
-/** The photo is a second call: the API keys it on a cheese that already exists. */
-export function uploadCheesePhoto(cheeseId: string, photo: File, token: string): Promise<Cheese> {
-  const body = new FormData();
-  body.append("photo", photo, photo.name);
-  return apiRequest({
-    path: `/cheeses/${cheeseId}/photo`,
-    method: "PUT",
-    formData: body,
-    token,
-    schema: cheeseSchema,
-  });
-}
-
 export function createCheese(input: NewCheese, token: string): Promise<Cheese> {
   return apiRequest({
     path: "/cheeses",

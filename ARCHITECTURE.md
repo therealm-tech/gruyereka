@@ -3,7 +3,7 @@
 ## Overview
 
 Gruyereka is two services. `gruyereka-api` is a Rust HTTP service holding every
-piece of domain state in PostgreSQL and the cheese photos in an S3-compatible
+piece of domain state in PostgreSQL and the tasting photos in an S3-compatible
 bucket. `gruyereka-web` is a Next.js server rendering the browser-facing client
 against that API. Both are stateless — all state lives in one of the two stores
 — so either scales horizontally and restarts freely.
@@ -60,8 +60,8 @@ is the one exception, and only over a pre-signed URL that expires.
   than one-shot: it creates the account if it is missing and reapplies the
   configured password and the admin role if they have drifted, so recovering an
   instance that has lost its last administrator is a restart.
-- **`photo.rs`** — the object store. Uploads and pre-signs; knows nothing about
-  cheeses beyond the key it is handed.
+- **`photo.rs`** — the object store. Uploads, pre-signs and deletes; knows
+  nothing about tastings beyond the key it is handed.
 
 `gruyereka-web` is a Next.js application in [gruyereka-web/src/](gruyereka-web/src/),
 and the only client that does not hold a token of its own:
@@ -71,8 +71,8 @@ and the only client that does not hold a token of its own:
   payload; writes are server actions. Cheeses and shops are indexable; the
   carnet, the profile, the administration, the forms and the correction pages
   are `noindex` and redirect a signed out visitor to the sign-in.
-  `app/photos/[cheeseId]/` relays the API's photo redirect so the browser keeps
-  talking to one origin.
+  `app/photos/[tastingId]/[photoId]/` relays the API's photo redirect so the
+  browser keeps talking to one origin.
 - **`lib/api/`** — the wire boundary. One `zod` schema per response, parsed on
   arrival, so a drifting contract fails here rather than three components later;
   `client.ts` is the only module that calls the API, and the only one that turns
@@ -122,8 +122,8 @@ statement. The mean is computed from `rating_score()`, a
 SQL function that projects the rating enum onto 1–5, so the ordering of the
 scale is defined once, in the schema.
 
-**Serving a photo.** The bucket stays private. `GET /api/v1/cheeses/{cheese_id}/photo`
-answers `307` to a pre-signed URL that expires in fifteen minutes, and the
+**Serving a photo.** The bucket stays private.
+`GET /api/v1/tastings/{tasting_id}/photos/{photo_id}` answers `307` to a pre-signed URL that expires in fifteen minutes, and the
 client follows it straight to the bucket. Photo bytes never pass back through
 the API, and a leaked URL stops working.
 
@@ -146,8 +146,8 @@ valid until it expires, since the API cannot revoke one.
 
 PostgreSQL holds users, cheeses, shops, tastings, the cheeses of each tasting
 and shop reviews. The bucket
-holds photo objects keyed `cheeses/<cheese id>`; the row keeps the key, the
-bucket keeps the bytes.
+holds photo objects keyed `tastings/<tasting id>/<photo id>`; a
+`tasting_photos` row keeps the key, the bucket keeps the bytes.
 
 Identifiers are UUIDv7 everywhere: they are unguessable like a v4 and sort by
 creation time like a sequence, so a listing ordered by id is chronological and
@@ -225,6 +225,14 @@ The API is written against the S3 API alone and never against a particular
 implementation, so which server provides it is a deployment choice: the Compose
 stack runs SeaweedFS, and anything else speaking S3 works unchanged.
 
+**Photos belong to the visit, not to the cheese.** A tasting carries up to ten
+photos — the counter, the platter, the basket brought home — and a cheese
+carries none. A picture taken on a given day at a given shop says something
+about that visit; pinned to the cheese, it would stand for every Comté 18
+months from every shop. The cap of ten, enforced by the API before anything
+is stored, bounds what one form submission sends through the web server and
+what one tasting costs in the bucket.
+
 **Static SQL strings only.** `sqlx` 0.9 refuses a runtime-built query string
 unless it is explicitly asserted safe; the repositories keep every statement a
 literal and push all variation into bind parameters, including the optional
@@ -292,8 +300,12 @@ step and puts the duplication somewhere a test can see it.
 - **The administrator account's password is owned by the configuration.** It is
   reapplied at every startup, so that account cannot durably change its own
   password through the API.
-- **One photo per cheese**, keyed on the cheese id, and a cheese's photo is
-  global rather than per shop or per tasting.
+- **A photo cannot be pinned to one cheese of a visit.** It belongs to the
+  visit as a whole, so a cheese page shows no picture of that cheese.
+- **Photo objects can outlive their rows.** An upload stores the object before
+  inserting the row, and deleting a photo or a tasting removes the row before
+  the object, best effort. A failure in between leaves an object nothing
+  references, and nothing collects those.
 - **Listings are offset-paginated**, which is fine at this size and degrades on
   deep pages; there is no cursor pagination.
 - **The wire contract is declared twice**, once as the API's DTOs and once as

@@ -36,6 +36,7 @@ uuid = { version = "1.26.0", features = ["v7", "serde"] }
 validator = { version = "0.21.0", features = ["derive"] }
 
 [dev-dependencies]
+aws-smithy-http-client = { version = "1.4.0", features = ["test-util"] }
 http-body-util = "0.1.5"
 mockall = "0.15.0"
 tower = { version = "0.5.3", features = ["util"] }

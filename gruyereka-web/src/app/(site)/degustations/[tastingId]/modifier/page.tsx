@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { findCheeseOptions, findShopOptions, type Option } from "@/app/actions/pick";
 import { removeTasting } from "@/app/actions/tastings";
+import { PhotoManager } from "@/components/tastings/PhotoManager";
 import { type BasketRow, TastingForm } from "@/components/tastings/TastingForm";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { getCheese } from "@/lib/api/cheeses";
@@ -105,6 +106,8 @@ export default async function EditTastingPage({
         findShops={findShopOptions}
       />
 
+      <PhotoManager tastingId={tasting.id} photos={tasting.photos} />
+
       <form
         action={removeTasting}
         className="flex w-full flex-col gap-3 border-t border-rule pt-6 lg:w-[680px]"
@@ -113,8 +116,8 @@ export default async function EditTastingPage({
         <h2 className="label-mono">Supprimer</h2>
         <p className="text-[13px] leading-relaxed text-ink-2 text-pretty">
           Toute la visite disparaît, avec les {tasting.items.length} fromage
-          {tasting.items.length > 1 ? "s" : ""} qu’elle porte et les prix relevés ce jour-là. Pour
-          n’en retirer qu’un, enlevez sa ligne ci-dessus et enregistrez.
+          {tasting.items.length > 1 ? "s" : ""} qu’elle porte, ses photos et les prix relevés ce
+          jour-là. Pour n’en retirer qu’un, enlevez sa ligne ci-dessus et enregistrez.
         </p>
         <button
           type="submit"

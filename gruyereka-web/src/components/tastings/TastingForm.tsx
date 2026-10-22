@@ -4,10 +4,12 @@ import { useActionState, useState } from "react";
 import type { Option } from "@/app/actions/pick";
 import { IDLE } from "@/app/actions/state";
 import { addTasting, editTasting } from "@/app/actions/tastings";
+import { PhotoPicker } from "@/components/tastings/PhotoPicker";
 import { ChoiceChip } from "@/components/ui/ChoiceChip";
 import { EntityPicker } from "@/components/ui/EntityPicker";
 import { PlusIcon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
+import { MAX_TASTING_PHOTOS } from "@/lib/api/schemas";
 import {
   CURRENCIES,
   type Currency,
@@ -74,8 +76,16 @@ export function TastingForm({
   const [state, action, pending] = useActionState(editing ? editTasting : addTasting, IDLE);
   const [rows, setRows] = useState(() => keyed(initialRows));
   const [currency, setCurrency] = useState<Currency>(initialCurrency);
+  const [photos, setPhotos] = useState<File[]>([]);
 
   const fields = state.status === "error" ? state.fields : undefined;
+
+  // A correction leaves the photos alone: they have their own section, one
+  // request each, on the same page.
+  const submit = (formData: FormData) => {
+    if (!editing) for (const photo of photos) formData.append("photos", photo, photo.name);
+    action(formData);
+  };
 
   const setRating = (key: number, rating: RatingLevel) =>
     setRows((current) =>
@@ -85,7 +95,7 @@ export function TastingForm({
     );
 
   return (
-    <form action={action} className="flex w-full flex-col gap-6 lg:w-[680px]">
+    <form action={submit} className="flex w-full flex-col gap-6 lg:w-[680px]">
       {state.status === "error" ? (
         <Notice
           title={editing ? "La correction n’est pas passée" : "La dégustation n’a pas été notée"}
@@ -247,6 +257,22 @@ export function TastingForm({
           Ajouter un fromage
         </button>
       </div>
+
+      {editing ? null : (
+        <div className="flex flex-col gap-2.5">
+          <h2 className="label-mono">Les photos — facultatif</h2>
+          <p className="text-sm leading-relaxed text-ink-3 text-pretty">
+            Le plateau, la vitrine, une part sur une planche : jusqu’à {MAX_TASTING_PHOTOS} par
+            visite.
+          </p>
+          <PhotoPicker
+            files={photos}
+            onChange={setPhotos}
+            max={MAX_TASTING_PHOTOS}
+            error={fields?.photos}
+          />
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3">
         <button

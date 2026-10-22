@@ -1,10 +1,9 @@
 use aide::axum::ApiRouter;
-use aide::axum::routing::{get_with, put_with};
+use aide::axum::routing::get_with;
 use aide::transform::TransformOperation;
 use axum::Json;
-use axum::extract::{DefaultBodyLimit, Multipart, Path, Query, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::response::Redirect;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -18,12 +17,6 @@ use crate::api::state::AppState;
 use crate::domain::cheese::{
     Cheese, CheeseSummary, MilkType, NewCheese, PasteType, ProtectedDesignation,
 };
-
-/// Photos come straight off a phone camera, so the 2 MiB axum default is far too
-/// small. Scoped to the upload route only.
-const MAX_PHOTO_BYTES: usize = 10 * 1024 * 1024;
-
-const ACCEPTED_PHOTO_TYPES: [&str; 3] = ["image/jpeg", "image/png", "image/webp"];
 
 #[derive(Debug, Deserialize, JsonSchema, Validate)]
 #[serde(rename_all = "camelCase")]
@@ -54,9 +47,6 @@ pub struct CheeseResponse {
     pub paste_type: PasteType,
     pub designation: Option<ProtectedDesignation>,
     pub aging_months: Option<i32>,
-    /// Path to the photo, or `null` when none has been uploaded. Follow it with
-    /// the caller's credentials; it redirects to a short-lived storage URL.
-    pub photo_url: Option<String>,
     pub tasting_count: i64,
     /// Mean of the tastings on the 1 (inedible) to 5 (delicious) scale.
     pub average_score: Option<f64>,
@@ -67,10 +57,6 @@ pub struct CheeseResponse {
 
 impl CheeseResponse {
     fn from_parts(cheese: Cheese, tasting_count: i64, average_score: Option<f64>) -> Self {
-        let photo_url = cheese
-            .photo_key
-            .as_ref()
-            .map(|_| format!("/api/v1/cheeses/{}/photo", cheese.id));
         Self {
             id: cheese.id,
             name: cheese.name,
@@ -78,7 +64,6 @@ impl CheeseResponse {
             paste_type: cheese.paste_type,
             designation: cheese.designation,
             aging_months: cheese.aging_months,
-            photo_url,
             tasting_count,
             average_score,
             created_by_user_id: cheese.created_by,
@@ -117,12 +102,6 @@ pub fn routes() -> ApiRouter<AppState> {
             get_with(list, list_docs).post_with(create, create_docs),
         )
         .api_route("/cheeses/{cheese_id}", get_with(show, show_docs))
-        .api_route(
-            "/cheeses/{cheese_id}/photo",
-            put_with(upload_photo, upload_photo_docs)
-                .get_with(show_photo, show_photo_docs)
-                .layer(DefaultBodyLimit::max(MAX_PHOTO_BYTES)),
-        )
 }
 
 async fn list(
@@ -174,69 +153,6 @@ async fn show(
     Ok(Json(summary.into()))
 }
 
-async fn upload_photo(
-    State(state): State<AppState>,
-    _caller: AuthUser,
-    Path(path): Path<CheesePath>,
-    mut multipart: Multipart,
-) -> Result<Json<CheeseResponse>> {
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|error| ApiError::BadRequest(error.body_text()))?
-        .ok_or_else(|| ApiError::BadRequest("the request carries no file".to_owned()))?;
-
-    let content_type = field
-        .content_type()
-        .ok_or_else(|| ApiError::BadRequest("the file has no content type".to_owned()))?
-        .to_owned();
-    if !ACCEPTED_PHOTO_TYPES.contains(&content_type.as_str()) {
-        return Err(ApiError::BadRequest(format!(
-            "unsupported photo type {content_type}"
-        )));
-    }
-    let bytes = field
-        .bytes()
-        .await
-        .map_err(|error| ApiError::BadRequest(error.body_text()))?;
-
-    let key = format!("cheeses/{}", path.cheese_id);
-    state
-        .photos
-        .put(&key, &content_type, bytes.to_vec())
-        .await
-        .map_err(ApiError::internal)?;
-    let cheese = state
-        .cheeses
-        .set_photo_key(path.cheese_id, &key)
-        .await
-        .map_err(|error| map_repository_error(error, "cheese", "cheese"))?;
-    let summary = state
-        .cheeses
-        .summary(cheese.id)
-        .await?
-        .ok_or(ApiError::NotFound("cheese"))?;
-    Ok(Json(summary.into()))
-}
-
-async fn show_photo(
-    State(state): State<AppState>,
-    Path(path): Path<CheesePath>,
-) -> Result<Redirect> {
-    let cheese = state
-        .cheeses
-        .find(path.cheese_id)
-        .await?
-        .ok_or(ApiError::NotFound("cheese"))?;
-    let key = cheese.photo_key.ok_or(ApiError::NotFound("photo"))?;
-    let url = state
-        .photos
-        .presigned_url(&key)
-        .await
-        .map_err(ApiError::internal)?;
-    Ok(Redirect::temporary(&url))
-}
-
 fn list_docs(operation: TransformOperation) -> TransformOperation {
     operation
         .tag("Cheeses")
@@ -257,19 +173,4 @@ fn create_docs(operation: TransformOperation) -> TransformOperation {
 
 fn show_docs(operation: TransformOperation) -> TransformOperation {
     operation.tag("Cheeses").summary("Describe one cheese")
-}
-
-fn upload_photo_docs(operation: TransformOperation) -> TransformOperation {
-    operation
-        .tag("Cheeses")
-        .summary("Replace the photo of a cheese")
-        .description("Send one `multipart/form-data` field holding a JPEG, PNG or WebP image.")
-        .security_requirement("BearerAuth")
-}
-
-fn show_photo_docs(operation: TransformOperation) -> TransformOperation {
-    operation
-        .tag("Cheeses")
-        .summary("Redirect to the photo of a cheese")
-        .response::<307, ()>()
 }

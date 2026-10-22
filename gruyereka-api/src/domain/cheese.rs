@@ -67,7 +67,6 @@ pub struct Cheese {
     pub paste_type: PasteType,
     pub designation: Option<ProtectedDesignation>,
     pub aging_months: Option<i32>,
-    pub photo_key: Option<String>,
     pub created_by: Uuid,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

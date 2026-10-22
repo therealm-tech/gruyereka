@@ -11,7 +11,7 @@ import type { PasteType } from "@/lib/vocabulary";
  * compiler ask for a tint whenever a paste is added.
  */
 export type PasteTint = {
-  /** Fills the photo slot when a fiche has no photo of its own. */
+  /** Fills the frame at the top of a cheese's card and fiche. */
   ground: string;
   /** The same hue, dark enough to read as small text on the paper. */
   ink: string;
