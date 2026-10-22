@@ -22,7 +22,17 @@ updates:
       default-days: 3
     commit-message:
       prefix: api
+    ignore:
+      # aide only accepts schemars 1.x from 0.16, which has no stable release
+      # yet: bumped alone, every handler fails to compile.
+      - dependency-name: schemars
+        versions:
+          - ">= 1"
     groups:
+      aide:
+        patterns:
+          - aide
+          - schemars
       # The service crates only build against the aws-config and aws-smithy-*
       # releases they were cut with: bumped one at a time, the PR fails.
       aws-sdk:
