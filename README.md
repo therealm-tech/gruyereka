@@ -42,7 +42,7 @@ it.
 
 - Rust, installed through [rustup](https://rustup.rs) — the pinned toolchain in
   [rust-toolchain.toml](rust-toolchain.toml) is fetched automatically
-- Node.js ≥ 22 and npm, for the web client
+- Node.js ≥ 22.12 and npm, for the web client
 - Docker ≥ 25, for the PostgreSQL and the object storage the API talks to
 
 ### Installation

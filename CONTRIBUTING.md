@@ -15,7 +15,7 @@ You need:
 - **pre-commit**, and a Python to run it. The hooks that are not local install
   themselves.
 - **Go**, for the `actionlint` hook, which pre-commit builds from source.
-- **Node.js** ≥ 22 and npm, for the web client. The `biome` and `tsc` hooks run
+- **Node.js** ≥ 22.12 and npm, for the web client. The `biome` and `tsc` hooks run
   the binaries from its own dependency tree, so they fail until it is installed.
 
 Install pre-commit with a distro-neutral command:
@@ -118,7 +118,7 @@ npm --prefix gruyereka-web test
 A single file, or watch mode while iterating:
 
 ```sh
-npm --prefix gruyereka-web test -- src/lib/identity.test.ts
+npm --prefix gruyereka-web test -- src/lib/format.test.ts
 ```
 
 ```sh
