@@ -48,5 +48,10 @@
   },
   "allowScripts": {
     "esbuild@0.28.2": true
+  },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.18"
+    }
   }
 }
