@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { type FormState, fieldSentences } from "@/app/actions/state";
@@ -173,8 +173,8 @@ export async function addTasting(_previous: FormState, formData: FormData): Prom
 
   // Every cheese in the basket has a new average and a new count, so its fiche
   // and every listing showing it are stale the moment this lands.
-  revalidateTag(TASTINGS_TAG);
-  revalidateTag(CHEESES_TAG);
+  updateTag(TASTINGS_TAG);
+  updateTag(CHEESES_TAG);
   redirect("/carnet");
 }
 
@@ -212,9 +212,9 @@ export async function editTasting(_previous: FormState, formData: FormData): Pro
     return refusal(error);
   }
 
-  revalidateTag(TASTINGS_TAG);
-  revalidateTag(CHEESES_TAG);
-  revalidateTag(SHOPS_TAG);
+  updateTag(TASTINGS_TAG);
+  updateTag(CHEESES_TAG);
+  updateTag(SHOPS_TAG);
   redirect("/carnet");
 }
 
@@ -230,7 +230,7 @@ export async function removeTasting(formData: FormData): Promise<void> {
     logger.warn("tasting.removeFailed", { tastingId, reason: String(error) });
   }
 
-  revalidateTag(TASTINGS_TAG);
-  revalidateTag(CHEESES_TAG);
+  updateTag(TASTINGS_TAG);
+  updateTag(CHEESES_TAG);
   redirect("/carnet");
 }

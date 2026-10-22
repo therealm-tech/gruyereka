@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { type FormState, fieldSentences } from "@/app/actions/state";
@@ -134,6 +134,6 @@ export async function addCheese(_previous: FormState, formData: FormData): Promi
     }
   }
 
-  revalidateTag(CHEESES_TAG);
+  updateTag(CHEESES_TAG);
   redirect(photoLanded ? `/fromages/${cheeseId}` : `/fromages/${cheeseId}?photo=echec`);
 }

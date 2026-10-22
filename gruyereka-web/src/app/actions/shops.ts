@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { type FormState, fieldSentences } from "@/app/actions/state";
@@ -131,7 +131,7 @@ export async function addShop(_previous: FormState, formData: FormData): Promise
     return refusal(error);
   }
 
-  revalidateTag(SHOPS_TAG);
+  updateTag(SHOPS_TAG);
   redirect(`/boutiques/${shopId}`);
 }
 
@@ -174,8 +174,8 @@ export async function reviewShop(_previous: FormState, formData: FormData): Prom
     return refusal(error);
   }
 
-  revalidateTag(SHOP_REVIEWS_TAG);
-  revalidateTag(SHOPS_TAG);
+  updateTag(SHOP_REVIEWS_TAG);
+  updateTag(SHOPS_TAG);
   redirect(`/boutiques/${shopId}`);
 }
 
@@ -193,7 +193,7 @@ export async function removeMyReview(formData: FormData): Promise<void> {
     logger.warn("shopReview.removeFailed", { shopId, reason: String(error) });
   }
 
-  revalidateTag(SHOP_REVIEWS_TAG);
-  revalidateTag(SHOPS_TAG);
+  updateTag(SHOP_REVIEWS_TAG);
+  updateTag(SHOPS_TAG);
   redirect(`/boutiques/${shopId}`);
 }
